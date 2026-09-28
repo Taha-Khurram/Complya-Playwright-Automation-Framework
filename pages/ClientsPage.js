@@ -7,6 +7,8 @@ export class ClientsPage {
     this.page = page
     this.sidebar = new Sidebar(page)
     this.addButton = page.getByRole('button', { name: "Add" })
+    // e.g. "1-10 / 13 Clients", shown once the list has loaded
+    this.listSummary = page.getByRole('main').getByRole('heading', { name: /\/ \d+ Clients$/ })
     this.firstNameInput = page.locator("#firstName")
     this.lastNameInput = page.locator("#lastName")
     this.dateOfBirthInput = page.locator("//input[@placeholder='Select date of birth']")
@@ -14,6 +16,10 @@ export class ClientsPage {
     this.genderDropdown = page.getByRole('button', { name: 'Select Gender' })
     this.addClientButton = page.getByRole('button', { name: 'Add Client' })
     this.successToast = page.locator("//div[text()='Client has been added successfully!']")
+  }
+
+  async visit() {
+    await this.page.goto("/app/clients")
   }
 
   async open() {

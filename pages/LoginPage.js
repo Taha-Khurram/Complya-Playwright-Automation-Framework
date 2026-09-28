@@ -17,7 +17,8 @@ export class LoginPage {
   async open() {
     await this.page.goto("/home/")
     await this.loginLink.click()
-    await expect(this.page).toHaveURL("/app/sign-in")
+    // The link opens /app/, which checks for a session before redirecting - slow when tests run in parallel
+    await expect(this.page).toHaveURL("/app/sign-in", { timeout: 15_000 })
   }
 
   async signIn(email, password) {

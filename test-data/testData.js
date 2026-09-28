@@ -55,3 +55,6 @@ export const passwordResetUser = {
   newPassword: "Reset@1234",
   weakPassword: "short",
 }
+
+// Every permission a staff member can be invited with
+export const staffPermissions = ["Admin", "Manager", "Clinical", "Staff"]

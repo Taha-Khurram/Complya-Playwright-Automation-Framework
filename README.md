@@ -54,7 +54,7 @@ Every run records a trace, video and screenshots in `test-results/` and the HTML
 | `forgotPassword.spec.js` | Forgot password form rejects an empty or badly formatted email, and shows the same confirmation for an unknown email |
 | `createSite.spec.js` | Admin creates a site |
 | `createClient.spec.js` | Admin creates a client |
-| `createStaff.spec.js` | Admin invites a staff member; staff opens the invite email, creates an account, signs in and accepts the invite |
+| `createStaff.spec.js` | For each permission (Admin, Manager, Clinical, Staff): admin invites a staff member; they open the invite email, create an account, sign in and accept the invite |
 
 ## Project structure
 

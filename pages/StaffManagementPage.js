@@ -8,6 +8,8 @@ export class StaffManagementPage {
     this.page = page
     this.sidebar = new Sidebar(page)
     this.addButton = page.getByRole('main').getByRole('button', { name: "Add" })
+    // e.g. "1-10 / 25 Staff", shown once the list has loaded
+    this.listSummary = page.getByRole('main').getByRole('heading', { name: /\/ \d+ Staff$/ })
     this.dialog = page.getByRole('dialog')
     this.firstNameInput = this.dialog.getByRole('textbox', { name: 'First Name' })
     this.lastNameInput = this.dialog.getByRole('textbox', { name: 'Last Name' })
@@ -18,6 +20,10 @@ export class StaffManagementPage {
     this.sitesSearch = this.dialog.getByRole('textbox', { name: 'Search sites...' })
     this.submitButton = this.dialog.getByRole('button', { name: 'Add', exact: true })
     this.inviteToast = page.locator("//div[text()='Staff invitation sent successfully!']")
+  }
+
+  async visit() {
+    await this.page.goto("/app/staffs")
   }
 
   async open() {

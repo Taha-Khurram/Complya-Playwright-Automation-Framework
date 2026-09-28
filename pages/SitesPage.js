@@ -8,6 +8,8 @@ export class SitesPage {
     this.sidebar = new Sidebar(page)
     this.sitesCard = page.locator("//div[contains(@class, 'card-body') and .//h5[text()='Sites']]")
     this.addButton = page.getByRole('button', { name: "Add" })
+    // e.g. "1-10 / 10 Sites", shown once the list has loaded
+    this.listSummary = page.getByRole('main').getByRole('heading', { name: /\/ \d+ Sites$/ })
     this.autofillButton = page.getByRole('button', { name: "Autofill from Workspace" })
     this.siteNameInput = page.getByRole('textbox', { name: 'Site Name *' })
     this.cityInput = page.getByRole('textbox', { name: 'City *' })
@@ -15,6 +17,10 @@ export class SitesPage {
     this.stateInput = page.getByRole('textbox', { name: 'State *' })
     this.saveButton = page.getByRole('button', { name: 'Save' })
     this.successToast = page.locator("//div[text()='Site Created Successfully!']")
+  }
+
+  async visit() {
+    await this.page.goto("/app/sites")
   }
 
   async open() {

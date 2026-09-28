@@ -3,6 +3,7 @@ export class Sidebar {
   constructor(page) {
     this.page = page
     this.wrapper = page.locator("//div[contains(@class, 'sidebar-main-wrapper')]")
+    this.links = this.wrapper.getByRole('link')
     this.settingsLink = page.getByRole('link', { name: 'Settings icon Settings' })
     this.clientsLink = page.getByRole('link', { name: 'Client Icon Clients' })
     this.staffLink = page.getByRole('link', { name: 'Staff icon Staff' })
