@@ -36,6 +36,21 @@ export const newOwner = {
   password: "Owner@1234",
 }
 
+// Inputs for the sign up form's validation tests
+export const signUpForm = {
+  validEmails: ["user+tag@example.co.uk", "o'brien@example.com", "first.last@sub.example.com"],
+  invalidEmails: ["not-an-email", "user@@example.com", "user name@example.com", "<script>@example.com"],
+  // Each breaks a different password rule; `rules` is what the hints should show
+  weakPasswords: [
+    { label: "too short", value: "Ab@1234", rules: { minLength: false, specialChar: true } },
+    { label: "no special character", value: "Abcd12345", rules: { minLength: true, specialChar: false } },
+    { label: "only spaces", value: "        ", rules: { minLength: true, specialChar: false } },
+  ],
+  // Smallest password that passes: exactly 8 characters with one special character
+  shortestValidPassword: "Abcdef@1",
+  oneCharTooShort: "Abcde@1",
+}
+
 export const workspace = {
   companyName: "Playwright Care Ltd",
   phone: "7025550123",

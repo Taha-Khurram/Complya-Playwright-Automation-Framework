@@ -12,6 +12,8 @@ export class LoginPage {
     this.successToast = page.locator("//div[text()='Sign-in successful!']")
     this.invalidCredentialsToast = page.locator("//div[text()='Invalid email or password. Please try again.']")
     this.forgetPasswordLink = page.getByRole('link', { name: 'Forget password' })
+    this.verifyEmailFirstToast = page.locator("//div[text()='Please verify your email before signing in. Check your inbox for the verification link.']")
+    this.resendVerificationLink = page.getByText('Resend verification email')
   }
 
   async open() {
@@ -42,6 +44,13 @@ export class LoginPage {
   async expectInvalidCredentials() {
     await expect(this.invalidCredentialsToast).toBeVisible()
     await expect(this.page).toHaveURL("/app/sign-in")
+  }
+
+  // Account exists but its email link was never clicked
+  async expectEmailNotVerified() {
+    await expect(this.verifyEmailFirstToast).toBeVisible()
+    await expect(this.page).toHaveURL("/app/sign-in")
+    await expect(this.resendVerificationLink).toBeVisible()
   }
 
   async goToForgotPassword() {

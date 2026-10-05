@@ -48,8 +48,9 @@ Every run records a trace, video and screenshots in `test-results/` and the HTML
 | Spec | Scenario |
 | ---- | -------- |
 | `login.spec.js` | Admin signs in with valid credentials |
-| `signUp.spec.js` | New user signs up, verifies their email from a real inbox, completes the 4-step onboarding (profile, company, workspace details, skip team invites) and lands on the dashboard |
-| `signUp.spec.js` | Sign up form enables Create Account only for a password of 8+ characters with a special character, and rejects mismatched passwords |
+| `signUp.spec.js` | **Positive:** new user signs up, verifies their email from a real inbox, completes the 4-step onboarding and lands on the dashboard; a strong password meets both rules and enables Create Account; common valid email formats (plus tags, apostrophes, subdomains) pass; each password field can be shown and hidden independently; Log In, Terms and Privacy links point to the right pages |
+| `signUp.spec.js` | **Negative:** empty and badly formatted emails are rejected without calling the server; passwords that are too short, lack a special character or are only spaces keep Create Account disabled; mismatched confirm password is rejected; an existing email can't sign up again; an unverified account can't sign in |
+| `signUp.spec.js` | **Edge:** password length boundary (7 rejected, 8 accepted); duplicate check ignores letter case; email with surrounding spaces is rejected; verification link works once and a tampered link is rejected; refreshing the "Check your email" screen (marked `test.fail`, known server 404 bug) |
 | `forgotPassword.spec.js` | User requests a reset link, receives it in a real inbox, is blocked from weak or mismatched passwords, sets a new password; the old password stops working, the new one signs in, and the link can't be reused |
 | `forgotPassword.spec.js` | Forgot password form rejects an empty or badly formatted email, and shows the same confirmation for an unknown email |
 | `createSite.spec.js` | Admin creates a site |

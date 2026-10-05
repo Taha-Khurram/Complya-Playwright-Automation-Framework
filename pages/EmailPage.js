@@ -27,6 +27,12 @@ export class EmailPage {
     await this.page.waitForURL(/complya\.com\/app\/email\/verified/)
   }
 
+  // Same link, but for when it's expected to fail (used or tampered), so it may not reach the verified page
+  async openVerifyEmailLink() {
+    await this.verifyEmailLink.click()
+    await this.page.waitForURL(/complya\.com\/app\//)
+  }
+
   // Clicks the link in the "Reset your password" email. Where it lands depends on
   // whether the link was already used, so the caller checks the page.
   async openResetPasswordLink() {
