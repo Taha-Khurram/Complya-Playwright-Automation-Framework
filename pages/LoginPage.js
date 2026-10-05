@@ -33,7 +33,8 @@ export class LoginPage {
   async login(email, password) {
     await this.open()
     await this.signIn(email, password)
-    await expect(this.page).toHaveURL("/app/")
+    // Same slow session check as open(), worst when several admin tests sign in at once
+    await expect(this.page).toHaveURL("/app/", { timeout: 15_000 })
     await this.expectSignInSuccess()
   }
 

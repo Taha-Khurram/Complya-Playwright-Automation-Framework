@@ -1,3 +1,5 @@
+import { expect } from '@playwright/test'
+
 export class Sidebar {
 
   constructor(page) {
@@ -9,9 +11,13 @@ export class Sidebar {
     this.staffLink = page.getByRole('link', { name: 'Staff icon Staff' })
   }
 
-  // The sidebar is collapsed until hovered
+  // The sidebar is collapsed until hovered. A hover before the page has settled can be missed,
+  // so keep hovering until the links show their labels (collapsed links have no name)
   async expand() {
-    await this.wrapper.hover()
+    await expect(async () => {
+      await this.wrapper.hover()
+      await expect(this.wrapper.getByRole('link', { name: /\S/ }).first()).toBeVisible({ timeout: 1_000 })
+    }).toPass({ timeout: 15_000 })
   }
 
   async open(link) {

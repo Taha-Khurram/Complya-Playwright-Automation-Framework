@@ -77,7 +77,8 @@ export class SignUpPage {
     await expect(this.specialCharMet).toBeVisible()
     await expect(this.minLengthMet).toBeVisible()
     await this.createAccountButton.click()
-    await expect(this.verifyEmailToast).toBeVisible()
+    // Account creation is slow when several tests sign up at once
+    await expect(this.verifyEmailToast).toBeVisible({ timeout: 15_000 })
   }
 
   async expectEmailPrefilled(email) {

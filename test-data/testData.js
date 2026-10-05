@@ -14,7 +14,8 @@ export const site = {
 export const client = {
   firstName: "Test",
   lastName: "User",
-  dateOfBirth: "Choose Wednesday, September 23rd, 2026",
+  // Relative to today, since the date picker only allows past dates and opens on the current month
+  dateOfBirth: { monthsAgo: 1, day: 15 },
   site: site.name,
   gender: "Male",
 }

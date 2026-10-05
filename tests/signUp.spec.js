@@ -300,7 +300,8 @@ test.describe("New user sign up", () => {
       await test.step("Link with a tampered code", async () => {
         await secondEmailPage.open(verificationEmail.html)
         const link = await secondEmailPage.verifyEmailLink.getAttribute('href')
-        await secondTab.goto(link.replace(/oobCode=[^&]+/, 'oobCode=tampered123'))
+        // Same as the link click above: don't wait for "load", or the error toast may already be gone
+        await secondTab.goto(link.replace(/oobCode=[^&]+/, 'oobCode=tampered123'), { waitUntil: 'commit' })
         await secondVerificationPage.expectLinkRejected()
       })
 

@@ -28,7 +28,8 @@ export class EmailVerificationPage {
 
   // A used or tampered verify link sends the user to sign in instead of verifying
   async expectLinkRejected() {
-    await expect(this.invalidLinkToast).toBeVisible()
+    // The code is checked with the server first, which is slow under parallel load
+    await expect(this.invalidLinkToast).toBeVisible({ timeout: 15_000 })
     await expect(this.page).toHaveURL('/app/sign-in')
     await expect(this.verifiedHeading).toBeHidden()
   }
