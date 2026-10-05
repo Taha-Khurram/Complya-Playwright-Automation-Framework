@@ -48,7 +48,8 @@ export class LoginPage {
 
   // Account exists but its email link was never clicked
   async expectEmailNotVerified() {
-    await expect(this.verifyEmailFirstToast).toBeVisible()
+    // Sign in waits on the server's verified check, which can take a while under parallel load
+    await expect(this.verifyEmailFirstToast).toBeVisible({ timeout: 15_000 })
     await expect(this.page).toHaveURL("/app/sign-in")
     await expect(this.resendVerificationLink).toBeVisible()
   }

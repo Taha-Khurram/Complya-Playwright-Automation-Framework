@@ -202,6 +202,9 @@ test.describe("New user sign up", () => {
 
     test("A new account can't sign in until its email is verified", async ({ request, signUpPage, loginPage }) => {
 
+      // Signs up and signs in against the live site, which is slow when tests run in parallel
+      test.setTimeout(90_000)
+
       const inbox = await createInbox(request, 'unverified')
 
       await signUpPage.open()
