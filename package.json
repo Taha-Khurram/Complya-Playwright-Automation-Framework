@@ -10,7 +10,8 @@
     "test:goals": "playwright test tests/goals",
     "test:headed": "playwright test --headed --workers=1",
     "test:ui": "playwright test --ui",
-    "report": "playwright show-report"
+    "report": "playwright show-report",
+    "report:ci": "node scripts/open-ci-report.js"
   },
   "keywords": [],
   "author": "",

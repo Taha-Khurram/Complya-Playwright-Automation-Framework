@@ -73,6 +73,7 @@ jobs:
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     permissions:
+      contents: read
       pages: write
       id-token: write
     environment:
@@ -80,15 +81,18 @@ jobs:
       url: ${{ steps.deploy.outputs.page_url }}
 
     steps:
+      - uses: actions/checkout@v5
+
       - uses: actions/download-artifact@v5
         with:
           name: playwright-report
           path: playwright-report
 
       # Traces record request headers (including the admin's auth token) and screenshots show
-      # production data, so the public page gets results and errors only
+      # production data, so the public page gets results and errors only. Links to them are
+      # replaced with a pointer to the full report artifact, so nothing in the page 404s.
       - name: Remove traces, videos and screenshots
-        run: rm -rf playwright-report/data
+        run: python3 scripts/strip_report_attachments.py playwright-report
 
       - uses: actions/configure-pages@v5
 

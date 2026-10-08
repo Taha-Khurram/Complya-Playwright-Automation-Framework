@@ -4,23 +4,19 @@ import { uniqueName } from '../../utils/unique'
 
 test.describe('Create client', () => {
 
-  test('Positive: admin creates a client and finds them in the client list', async ({ clientsPage }) => {
+  test('Positive: admin creates a client and their profile has the entered details', async ({ clientsPage, clientProfilePage }) => {
 
     const newClient = { ...client, lastName: uniqueName() }
-    const fullName = `${newClient.firstName} ${newClient.lastName}`
+    let clientId
 
     await clientsPage.visit()
 
-    await test.step("Add the client, which opens their profile", async () => {
-      await clientsPage.createClient(newClient)
+    await test.step('Add the client', async () => {
+      clientId = await clientsPage.createClient(newClient)
     })
 
-    await test.step('Client is listed and active', async () => {
-      await clientsPage.visit()
-      await clientsPage.search(fullName)
-      await expect(clientsPage.clientRow(fullName)).toHaveCount(1)
-      await expect(clientsPage.clientRow(fullName)).toContainText(newClient.site)
-      await expect(clientsPage.clientRow(fullName)).toContainText(/active/i)
+    await test.step("Client's profile shows their name", async () => {
+      await clientProfilePage.expectClient(clientId, newClient)
     })
   })
 

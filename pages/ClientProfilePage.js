@@ -9,6 +9,11 @@ export class ClientProfilePage {
     this.main = page.getByRole('main')
     this.rows = this.main.getByRole('row')
 
+    // Details tab
+    this.detailsHeading = this.main.getByRole('heading', { name: 'Details', level: 2 })
+    this.firstNameInput = this.main.getByRole('textbox', { name: 'First Name *' })
+    this.lastNameInput = this.main.getByRole('textbox', { name: 'Last Name *' })
+
     // Sessions tab
     this.sessionsHeading = this.main.getByRole('heading', { name: 'Sessions', level: 2 })
     this.pageSizeButton = this.main.getByRole('button', { name: '10', exact: true })
@@ -17,6 +22,14 @@ export class ClientProfilePage {
     this.programsHeading = this.main.getByRole('heading', { name: 'Programs', level: 2 })
     this.addGoalButton = this.main.getByRole('button', { name: 'Add Goal' })
     this.newGoalOption = page.getByRole('button', { name: 'New Goal' })
+  }
+
+  // Profile opens on its Details tab, with the client's name in the form
+  async expectClient(clientId, { firstName, lastName }) {
+    await this.page.goto(`/app/client-tabs/${clientId}`)
+    await expect(this.detailsHeading).toBeVisible()
+    await expect(this.firstNameInput).toHaveValue(firstName)
+    await expect(this.lastNameInput).toHaveValue(lastName)
   }
 
   async openSessions(clientId) {

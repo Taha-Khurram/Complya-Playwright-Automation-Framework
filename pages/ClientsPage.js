@@ -10,10 +10,6 @@ export class ClientsPage {
     this.addButton = this.main.getByRole('button', { name: 'Add', exact: true })
     // e.g. "1-10 / 18 clients", shown once the list has loaded (case varies between views)
     this.listSummary = this.main.getByRole('heading', { name: /^\d+-\d+ \/ \d+ clients$/i })
-    this.searchInput = this.main.getByRole('textbox', { name: 'Search...' })
-    // The search box is collapsed until the icon button just before it is clicked
-    this.searchToggle = this.searchInput.locator('xpath=preceding::button[1]')
-    this.rows = this.main.getByRole('row')
 
     this.dialog = page.getByRole('dialog')
     this.firstNameInput = this.dialog.getByRole('textbox', { name: 'First Name', exact: true })
@@ -49,8 +45,9 @@ export class ClientsPage {
     await this.calendarMonth.getByRole('option', { name: new RegExp(`^Choose \\w+, \\w+ ${day}(st|nd|rd|th), \\d{4}$`) }).click()
   }
 
-  // dateOfBirth is relative to today, e.g. { monthsAgo: 1, day: 15 }.
-  // Returns the new client's id, from their profile at /app/client-tabs/<id>
+  // dateOfBirth is relative to today, e.g. { monthsAgo: 1, day: 15 }. Returns the new client's id.
+  // The id comes from the create response: the client list can't be used to find a client,
+  // because its search matches loosely and long names are cut short.
   async createClient({ firstName, lastName, dateOfBirth, site, gender }) {
     await this.openNewClientForm()
     await this.firstNameInput.fill(firstName)
@@ -61,29 +58,29 @@ export class ClientsPage {
     await this.page.getByRole('button', { name: `${site} ${site}` }).first().click()
     await this.genderDropdown.click()
     await this.page.getByRole('button', { name: gender, exact: true }).click()
+
+    const created = this.page.waitForResponse(res =>
+      res.request().method() === 'POST' && /\/api\/clients\/?$/.test(new URL(res.url()).pathname))
     await this.addClientButton.click()
+    const response = await created
+    expect(response.ok(), `Creating the client returned ${response.status()}`).toBe(true)
     await expect(this.successToast).toBeVisible()
 
-    // Sometimes the app opens the new client's profile by itself, sometimes it stays on the list
-    const profileUrl = /\/app\/client-tabs\/[^/?]+/
-    const openedByApp = await this.page.waitForURL(profileUrl, { timeout: 5_000, waitUntil: 'commit' }).then(() => true, () => false)
-    if (!openedByApp) {
-      await this.search(`${firstName} ${lastName}`)
-      const row = this.clientRow(`${firstName} ${lastName}`)
-      await expect(row).toHaveCount(1)
-      await row.getByRole('img', { name: 'image' }).click()
-      await this.page.waitForURL(profileUrl, { waitUntil: 'commit' })
+    const id = findId(await response.json())
+    expect(id, 'The create client response should include the new client\'s id').toBeTruthy()
+    return id
+  }
+}
+
+// First "id" in the response, nearest the top, e.g. { id } or { data: { id } }
+function findId(body) {
+  const queue = [body]
+  while (queue.length) {
+    const value = queue.shift()
+    if (value && typeof value === 'object') {
+      if (typeof value.id === 'string' || typeof value.id === 'number') return String(value.id)
+      queue.push(...Object.values(value))
     }
-    await expect(this.page.getByRole('main').getByText(`${firstName} ${lastName}`).first()).toBeVisible()
-    return new URL(this.page.url()).pathname.split('/').pop()
   }
-
-  async search(fullName) {
-    await this.searchToggle.click()
-    await this.searchInput.fill(fullName)
-  }
-
-  clientRow(fullName) {
-    return this.rows.filter({ hasText: fullName })
-  }
+  return undefined
 }

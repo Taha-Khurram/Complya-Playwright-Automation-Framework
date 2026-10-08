@@ -56,12 +56,15 @@ export const test = base.extend({
   testClient: [async ({ browser }, use, workerInfo) => {
     const { baseURL, viewport } = workerInfo.project.use
     const context = await browser.newContext({ baseURL, viewport, storageState: ADMIN_STATE })
-    const clientsPage = new ClientsPage(await context.newPage())
+    const page = await context.newPage()
+    const clientsPage = new ClientsPage(page)
     const newClient = { ...client, lastName: uniqueName() }
     newClient.fullName = `${newClient.firstName} ${newClient.lastName}`
 
     await clientsPage.visit()
     newClient.id = await clientsPage.createClient(newClient)
+    // Proves the id belongs to this client before every session and goal test relies on it
+    await new ClientProfilePage(page).expectClient(newClient.id, newClient)
     await context.close()
 
     await use(newClient)
