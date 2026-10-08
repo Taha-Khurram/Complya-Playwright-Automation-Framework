@@ -14,6 +14,24 @@ max_runs=${MAX_RUNS:-5}
 max_bytes=${MAX_BYTES:-$((800 * 1024 * 1024))}
 workflow=playwright.yml
 
+# Retries dropped connections. Fails at once for runs without a report artifact (expired,
+# or the test job never got that far).
+download_report() {
+  local id=$1 dir=$2 attempt
+  if ! gh api "repos/$GITHUB_REPOSITORY/actions/runs/$id/artifacts" \
+      -q '.artifacts[] | select(.name == "playwright-report" and (.expired | not)) | .id' | grep -q .; then
+    echo "Run $id: no report artifact" >&2
+    return 1
+  fi
+  for attempt in 1 2 3; do
+    rm -rf "$dir"
+    gh run download "$id" -R "$GITHUB_REPOSITORY" -n playwright-report -D "$dir" && return 0
+    echo "Run $id: download attempt $attempt failed" >&2
+    sleep $((attempt * 10))
+  done
+  return 1
+}
+
 rm -rf "$out"
 mkdir -p "$out/runs"
 rows=""
@@ -26,8 +44,13 @@ ids=$( { echo "$GITHUB_RUN_ID"; gh run list -R "$GITHUB_REPOSITORY" --workflow "
 for id in $ids; do
   [ "$kept" -ge "$max_runs" ] && break
   dir="$out/runs/$id"
-  if ! gh run download "$id" -R "$GITHUB_REPOSITORY" -n playwright-report -D "$dir" >/dev/null 2>&1; then
+  if ! download_report "$id" "$dir"; then
     rm -rf "$dir"
+    # Without this run's own report there is nothing new to publish
+    if [ "$id" = "$GITHUB_RUN_ID" ]; then
+      echo "Could not download this run's report" >&2
+      exit 1
+    fi
     continue
   fi
   size=$(du -sb "$dir" | cut -f1)
@@ -41,10 +64,10 @@ for id in $ids; do
 
   # Suite and result of the test job, e.g. "Playwright (goals)" -> goals
   info=$(gh run view "$id" -R "$GITHUB_REPOSITORY" --json createdAt,headSha,event,jobs -q '
-    (.jobs[] | select(.name | startswith("Playwright")) | "\(.name | capture("\((?<s>[^)]*)\)").s)\t\(.conclusion)") as $job
+    (.jobs[] | select(.name | startswith("Playwright")) | "\(.name | ltrimstr("Playwright (") | rtrimstr(")"))\t\(.conclusion)") as $job
     | "\(.createdAt)\t\(.headSha[0:7])\t\(.event)\t\($job)"')
   IFS=$'\t' read -r created sha event suite result <<<"$info"
-  [ "$kept" -eq 1 ] && latest=$id
+  if [ "$kept" -eq 1 ]; then latest=$id; fi
   rows+="<tr><td><a href=\"runs/$id/\">#$id</a></td><td>${created/T/ }</td><td>$suite</td><td class=\"$result\">${result:-unknown}</td><td>$sha</td><td>$event</td></tr>"$'\n'
 done
 

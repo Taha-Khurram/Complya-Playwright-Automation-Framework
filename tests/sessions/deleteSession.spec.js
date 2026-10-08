@@ -6,14 +6,18 @@ test.describe('Delete session', () => {
   test.describe.configure({ timeout: 120_000 })
 
   test('Positive: admin deletes a single session and it leaves the client\'s schedule', async ({
-    createSession, testClient, sessionFormPage, clientProfilePage,
+    createSession, testClient, schedulePage, sessionFormPage, clientProfilePage,
   }) => {
     const [session] = await createSession({ daysAhead: 45 })
 
-    await test.step('Delete the session', async () => {
-      await sessionFormPage.openEdit(session.id)
-      await sessionFormPage.deleteSession()
+    await test.step('Open the session from the Schedule', async () => {
+      await schedulePage.visit()
+      await schedulePage.openSession(session)
+      await sessionFormPage.expectEditLoaded()
     })
+
+    // deleteSession waits for the "Session deleted successfully" toast
+    await test.step('Delete it from the 3-dot menu', () => sessionFormPage.deleteSession())
 
     await test.step("Session is no longer on the client's list", async () => {
       await clientProfilePage.openSessions(testClient.id)

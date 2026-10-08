@@ -17,6 +17,7 @@ export class ClientProfilePage {
     // Sessions tab
     this.sessionsHeading = this.main.getByRole('heading', { name: 'Sessions', level: 2 })
     this.pageSizeButton = this.main.getByRole('button', { name: '10', exact: true })
+    this.noSessionsHeading = this.main.getByRole('heading', { name: 'No Sessions Found' })
 
     // Programs tab
     this.programsHeading = this.main.getByRole('heading', { name: 'Programs', level: 2 })
@@ -35,7 +36,10 @@ export class ClientProfilePage {
   async openSessions(clientId) {
     await this.page.goto(`/app/client-tabs/${clientId}?tab=sessions`)
     await expect(this.sessionsHeading).toBeVisible()
-    // Show up to 50 rows so a test's sessions are never on a later page
+    // Show up to 50 rows so a test's sessions are never on a later page. An empty list has no
+    // page size control.
+    await expect(this.pageSizeButton.or(this.noSessionsHeading)).toBeVisible()
+    if (await this.noSessionsHeading.isVisible()) return
     await this.pageSizeButton.click()
     await this.page.locator('.dropdown-menu.show').getByText('50', { exact: true }).click()
   }

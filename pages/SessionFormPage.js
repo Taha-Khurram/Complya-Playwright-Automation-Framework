@@ -110,6 +110,10 @@ export class SessionFormPage {
   async openEdit(sessionId) {
     await this.page.goto('/app/sessions')
     await this.page.goto(`/app/edit-session/${sessionId}`)
+    await this.expectEditLoaded()
+  }
+
+  async expectEditLoaded() {
     await expect(this.editHeading).toBeVisible()
     await expect(this.startTimeInput).not.toHaveValue('')
   }
