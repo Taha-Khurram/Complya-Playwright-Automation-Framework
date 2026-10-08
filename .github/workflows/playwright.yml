@@ -1,0 +1,100 @@
+name: E2E tests
+
+on:
+  # Run by hand from the Actions tab, choosing which suite
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: Which tests to run
+        type: choice
+        default: all
+        options: [all, auth, admin, sessions, goals]
+  # Weekdays at 07:00 Pakistan time (02:00 UTC)
+  schedule:
+    - cron: '0 2 * * 1-5'
+
+permissions:
+  contents: read
+
+# Tests write to production, so never run two at once; a new run waits for the current one
+concurrency:
+  group: e2e-production
+  cancel-in-progress: false
+
+jobs:
+  test:
+    name: Playwright (${{ inputs.suite || 'all' }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    # Secrets and variables come from Settings > Environments > production
+    environment: production
+    env:
+      ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
+      ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+      BASE_URL: ${{ vars.BASE_URL }}
+      SUITE: ${{ inputs.suite || 'all' }}
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run ${{ env.SUITE }} tests
+        run: |
+          case "$SUITE" in
+            auth)           npx playwright test --project=auth ;;
+            admin)          npx playwright test --project=admin ;;
+            sessions|goals) npx playwright test "tests/$SUITE" ;;
+            *)              npx playwright test ;;
+          esac
+
+      # Full report with traces, videos and screenshots, for debugging failures
+      - name: Upload full report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
+  # Publishes the report to GitHub Pages, even when tests fail
+  report:
+    name: Publish report
+    needs: test
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+
+    steps:
+      - uses: actions/download-artifact@v5
+        with:
+          name: playwright-report
+          path: playwright-report
+
+      # Traces record request headers (including the admin's auth token) and screenshots show
+      # production data, so the public page gets results and errors only
+      - name: Remove traces, videos and screenshots
+        run: rm -rf playwright-report/data
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: playwright-report
+
+      - id: deploy
+        uses: actions/deploy-pages@v4
