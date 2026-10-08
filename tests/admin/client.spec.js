@@ -4,9 +4,9 @@ import { uniqueName } from '../../utils/unique'
 
 test.describe('Create client', () => {
 
-  test('Positive: admin creates a client and their profile has the entered details', async ({ clientsPage, clientProfilePage }) => {
+  test('Positive: admin creates a client and their profile has the entered details', async ({ adminUser, clientsPage, clientProfilePage }) => {
 
-    const newClient = { ...client, lastName: uniqueName() }
+    const newClient = { ...client, lastName: uniqueName(), site: adminUser.site }
     let clientId
 
     await clientsPage.visit()

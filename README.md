@@ -6,24 +6,22 @@ End-to-end UI tests for the [Complya](https://complya.com) web app, written with
 
 - Node.js 20 or later
 - Internet access to `complya.com` and `api.mail.tm` (the disposable inbox used for email steps)
-- An admin account on Complya that has a site called `Test Site` (see `test-data/testData.js`)
 
 ## Setup
 
 ```bash
 npm install
 npx playwright install chromium
-cp .env.example .env   # then fill in the admin credentials
+cp .env.example .env   # optional, only to change BASE_URL
 ```
 
 | Variable         | Purpose                                                | Default               |
 | ---------------- | ------------------------------------------------------ | --------------------- |
-| `ADMIN_EMAIL`    | Existing admin account used by the admin tests         | Required              |
-| `ADMIN_PASSWORD` | Password for that admin account                        | Required              |
 | `BASE_URL`       | Environment under test                                 | `https://complya.com` |
 | `SLOWMO`         | Delay in ms between actions, for watching headed runs | `0`                   |
 
 `.env` is git-ignored and loaded by `playwright.config.js`; real environment variables work too.
+No account is needed: every run signs up its own admin (see below).
 
 ## Running tests
 
@@ -48,13 +46,13 @@ Playwright runs three projects:
 
 | Project | What it runs | Signed in? |
 | ------- | ------------ | ---------- |
-| `setup` | `tests/setup/admin.setup.js` signs the admin in once and saves the session to `playwright/.auth/` | - |
-| `auth`  | `tests/auth/**` | No, these journeys start signed out |
+| `setup` | `tests/setup/admin.setup.js` creates a brand new admin: signs up, verifies the email from a real inbox, completes onboarding and creates a site. Saves the session and account to `playwright/.auth/` | - |
+| `auth`  | `tests/auth/**` | No, these journeys start signed out. Runs after `setup`, because login and duplicate sign up use its admin |
 | `admin` | `tests/admin/**`, `tests/sessions/**`, `tests/goals/**` | Yes, reuses the saved admin session. Runs after `setup` |
 
-Session and goal tests need data they can find again on a busy production account, so each worker creates
-one uniquely named client (`testClient` fixture) and schedules sessions for it on dates no other test uses.
-The admin is the staff member on those sessions.
+Every run therefore works in its own empty workspace, so tests never depend on data left by earlier runs.
+Within a run, each worker creates one uniquely named client (`testClient` fixture) and schedules sessions
+for it on dates no other test uses. The run's admin is the staff member on those sessions.
 
 ## Test scope
 
@@ -67,7 +65,7 @@ Every feature has a positive test and at least one negative test.
 | `auth/login` | Admin signs in and lands on the dashboard | Wrong password; unknown email gets the same error |
 | `auth/forgotPassword` | Reset link from a real inbox sets a new password; old one stops working; link can't be reused | Empty or invalid email; unknown email gets the same confirmation |
 | `admin/site` | Create a site with workspace autofill | Required fields |
-| `admin/client` | Create a client and find it in the list | Required fields |
+| `admin/client` | Create a client; their profile shows the entered name | Required fields |
 | `admin/staff` | Invite staff, who creates an account, signs in and accepts | Invalid email and no permission |
 | `sessions/createSession` | Schedule a session; it's listed as Upcoming with the right details | No staff; date in the past |
 | `sessions/editSession` | Move a session to a new time | End before start is rejected and nothing changes |
@@ -95,8 +93,8 @@ Specs import `test` and `expect` from `fixtures/`, not from `@playwright/test`.
 
 ## Important notes
 
-- **Tests change production data.** Runs create real clients, sites, sessions, goals, staff invites and new owner
-  accounts. Nothing is cleaned up automatically. Names start with `Playwright` and end with a unique suffix so they
+- **Tests change production data.** Every run creates a new owner account and workspace, plus clients, sites,
+  sessions, goals and staff invites in it. Nothing is cleaned up automatically. Names start with `Playwright` and end with a unique suffix so they
   are easy to find. Recurring sessions always have an end date, so no endless series is left behind.
 - **Deleted sessions are archived**, not removed; an admin can restore them from the archived sessions list.
 - **Email tests depend on mail.tm.** Sign up, onboarding, forgot password and staff invite tests wait up to 90

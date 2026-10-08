@@ -46,19 +46,19 @@ export const test = base.extend({
 
   // ---- Test data ----
 
-  // The signed-in admin, { email, fullName }, saved by tests/setup/admin.setup.js
+  // The admin created for this run, { email, password, fullName, site }, saved by tests/setup/admin.setup.js
   adminUser: [async ({}, use) => {
     await use(JSON.parse(readFileSync(ADMIN_PROFILE, 'utf8')))
   }, { scope: 'worker' }],
 
   // A client created once per worker, so session and goal tests can find their own data
   // among everything else on production. { firstName, lastName, fullName, id }
-  testClient: [async ({ browser }, use, workerInfo) => {
+  testClient: [async ({ browser, adminUser }, use, workerInfo) => {
     const { baseURL, viewport } = workerInfo.project.use
     const context = await browser.newContext({ baseURL, viewport, storageState: ADMIN_STATE })
     const page = await context.newPage()
     const clientsPage = new ClientsPage(page)
-    const newClient = { ...client, lastName: uniqueName() }
+    const newClient = { ...client, lastName: uniqueName(), site: adminUser.site }
     newClient.fullName = `${newClient.firstName} ${newClient.lastName}`
 
     await clientsPage.visit()

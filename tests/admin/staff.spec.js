@@ -9,12 +9,12 @@ import { AcceptInvitePage } from '../../pages/AcceptInvitePage'
 test.describe('Create staff', () => {
 
   test('Positive: admin invites a staff member, who creates an account and accepts the invite', async ({
-    staffManagementPage, inbox, staffContext, request,
+    adminUser, staffManagementPage, inbox, staffContext, request,
   }) => {
     // Waits for a real invitation email
     test.setTimeout(180_000)
 
-    const member = { ...staff, email: inbox.address }
+    const member = { ...staff, email: inbox.address, sites: [adminUser.site] }
 
     await test.step('Admin sends the invite', async () => {
       await staffManagementPage.visit()

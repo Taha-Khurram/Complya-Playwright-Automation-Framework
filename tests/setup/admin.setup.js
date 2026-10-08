@@ -1,28 +1,44 @@
-import { test as setup, expect } from '@playwright/test'
+import { test as setup, expect } from '../../fixtures'
 import { mkdirSync, writeFileSync } from 'fs'
 import { dirname } from 'path'
-import { LoginPage } from '../../pages/LoginPage'
-import { DashboardPage } from '../../pages/DashboardPage'
-import { admin } from '../../test-data/testData'
+import { site, workspace } from '../../test-data/testData'
 import { ADMIN_PROFILE, ADMIN_STATE } from '../../utils/auth'
+import { uniqueName } from '../../utils/unique'
 
-// Signs the admin in once per run; the admin project reuses this session instead of signing in per test
-setup('Sign in as admin', async ({ page }) => {
+// Every run starts from scratch: a brand new owner signs up, verifies their email, completes
+// onboarding and creates a site. All other tests then run as this admin, in this workspace.
+setup('Create a new admin account and workspace', async ({
+  page, verifiedOwner, emailVerificationPage, loginPage, onboardingPage, dashboardPage, sitesPage,
+}) => {
+  const fullName = `${verifiedOwner.firstName} ${verifiedOwner.lastName}`
+  const siteName = `Playwright Site ${uniqueName()}`
 
-  expect(admin.email, 'Set ADMIN_EMAIL in .env (see .env.example)').toBeTruthy()
-  expect(admin.password, 'Set ADMIN_PASSWORD in .env (see .env.example)').toBeTruthy()
+  await setup.step('Sign in for the first time', async () => {
+    await emailVerificationPage.goToLogin()
+    await loginPage.signIn(verifiedOwner.email, verifiedOwner.password)
+    await expect(page).toHaveURL('/app/onboarding')
+  })
 
-  await new LoginPage(page).login(admin.email, admin.password)
+  await setup.step('Complete onboarding', async () => {
+    await onboardingPage.completeProfile(verifiedOwner)
+    await onboardingPage.createCompany(workspace.companyName)
+    await onboardingPage.setUpWorkspace(workspace)
+    await onboardingPage.skipTeamInvites()
+    await dashboardPage.expectWelcome(fullName)
+    await dashboardPage.closeTour()
+  })
 
-  // The admin is also the staff member sessions are scheduled for, so record their name
-  // from the dashboard greeting, e.g. "Good Afternoon, Muhammad Taha"
-  const greeting = await new DashboardPage(page).greeting.innerText()
-  const fullName = greeting.replace(/^Good \w+,/, '').trim()
-  expect(fullName, 'Admin name should be read from the dashboard greeting').toBeTruthy()
+  // A new workspace has no sites, and clients and staff must belong to one
+  await setup.step('Create a site', async () => {
+    await sitesPage.visit()
+    await sitesPage.createSite({ ...site, name: siteName })
+  })
 
-  mkdirSync(dirname(ADMIN_STATE), { recursive: true })
-  writeFileSync(ADMIN_PROFILE, JSON.stringify({ email: admin.email, fullName }, null, 2))
-
-  // Firebase keeps the signed-in user in IndexedDB, so it must be saved too
-  await page.context().storageState({ path: ADMIN_STATE, indexedDB: true })
+  await setup.step('Save the session and account for the other tests', async () => {
+    mkdirSync(dirname(ADMIN_STATE), { recursive: true })
+    const profile = { email: verifiedOwner.email, password: verifiedOwner.password, fullName, site: siteName }
+    writeFileSync(ADMIN_PROFILE, JSON.stringify(profile, null, 2))
+    // Firebase keeps the signed-in user in IndexedDB, so it must be saved too
+    await page.context().storageState({ path: ADMIN_STATE, indexedDB: true })
+  })
 })

@@ -1,27 +1,21 @@
-import { test, expect } from '../../fixtures'
-import { admin } from '../../test-data/testData'
+import { test } from '../../fixtures'
 
+// Signs in as the admin created for this run by tests/setup/admin.setup.js
 test.describe('Login', () => {
 
-  test.beforeEach(() => {
-    test.skip(!admin.email || !admin.password, 'ADMIN_EMAIL / ADMIN_PASSWORD are not set')
-  })
+  test('Positive: admin signs in with valid credentials and lands on the dashboard', async ({ adminUser, loginPage, dashboardPage }) => {
 
-
-  test('Positive: admin signs in with valid credentials and lands on the dashboard', async ({ loginPage, dashboardPage }) => {
-
-    await loginPage.login(admin.email, admin.password)
+    await loginPage.login(adminUser.email, adminUser.password)
 
     // Profile button in the sidebar reads "Profile <name> <email>"
-    await dashboardPage.sidebar.expand()
-    await expect(dashboardPage.profileButton).toContainText(admin.email)
+    await dashboardPage.expectSignedInAs(adminUser.fullName, adminUser.email)
   })
 
 
-  test('Negative: wrong password is rejected', async ({ loginPage }) => {
+  test('Negative: wrong password is rejected', async ({ adminUser, loginPage }) => {
 
     await loginPage.open()
-    await loginPage.signIn(admin.email, 'Wrong@12345')
+    await loginPage.signIn(adminUser.email, 'Wrong@12345')
 
     await loginPage.expectInvalidCredentials()
   })

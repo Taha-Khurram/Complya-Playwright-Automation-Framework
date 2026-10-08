@@ -1,34 +1,29 @@
-// Set in .env (see .env.example)
-export const admin = {
-  email: process.env.ADMIN_EMAIL,
-  password: process.env.ADMIN_PASSWORD,
-}
+// The admin and their site are created fresh each run by tests/setup/admin.setup.js;
+// tests get them from the `adminUser` fixture.
 
-// An existing site in the admin's workspace; new clients and staff are assigned to it
+// name is made unique in the test
 export const site = {
-  name: 'Test Site',
+  name: 'Playwright Site',
   city: 'Test City',
   zip: '38000',
   state: 'Test State',
 }
 
-// lastName is made unique in the test, so each run's client can be found again
+// lastName is made unique and site is set to the run's site in the test
 export const client = {
   firstName: 'Playwright',
   lastName: 'Client',
   // Relative to today, since the date picker only allows past dates and opens on the current month
   dateOfBirth: { monthsAgo: 1, day: 15 },
-  site: site.name,
   gender: 'Male',
 }
 
-// email is added in the test from a fresh inbox
+// email and sites are added in the test
 export const staff = {
   firstName: 'Playwright',
   lastName: 'Staff',
   permission: 'Staff',
   role: 'Level 1',
-  sites: [site.name],
   password: 'Staff@1234',
 }
 

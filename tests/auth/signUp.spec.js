@@ -1,5 +1,5 @@
 import { test, expect } from '../../fixtures'
-import { admin, newOwner, signUpForm } from '../../test-data/testData'
+import { newOwner, signUpForm } from '../../test-data/testData'
 import { createInbox } from '../../utils/mailbox'
 
 test.describe('Sign up', () => {
@@ -76,12 +76,10 @@ test.describe('Sign up', () => {
     })
 
 
-    test('An email that already has an account cannot sign up again', async ({ signUpPage }) => {
-
-      test.skip(!admin.email, 'ADMIN_EMAIL is not set')
+    test('An email that already has an account cannot sign up again', async ({ adminUser, signUpPage }) => {
 
       await signUpPage.open()
-      await signUpPage.submit(admin.email, newOwner.password)
+      await signUpPage.submit(adminUser.email, newOwner.password)
 
       await signUpPage.expectRejectedWith(signUpPage.duplicateEmailToast)
     })

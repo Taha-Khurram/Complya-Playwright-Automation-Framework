@@ -3,8 +3,11 @@ import { defineConfig, devices } from '@playwright/test'
 import { existsSync } from 'fs'
 import { ADMIN_STATE } from './utils/auth'
 
-// Load ADMIN_EMAIL / ADMIN_PASSWORD etc. from .env when present (see .env.example)
+// Load BASE_URL etc. from .env when present (see .env.example)
 if (existsSync('.env')) process.loadEnvFile('.env')
+
+// Browser window size for every project
+const viewport = { width: 1080, height: 1020 }
 
 /**
  * @see https://playwright.dev/docs/test-configuration
@@ -25,7 +28,7 @@ export default defineConfig({
 
   use: {
     baseURL: process.env.BASE_URL || 'https://complya.com',
-    viewport: { width: 1440, height: 900 },
+    viewport,
     actionTimeout: 15_000,
     navigationTimeout: 30_000,
     trace: 'retain-on-failure',
@@ -36,17 +39,21 @@ export default defineConfig({
   },
 
   projects: [
-    // Signs the admin in once and saves the session for the admin projects
+    // Creates a brand new admin and workspace for this run (sign up, email, onboarding, site).
+    // Waits for a real email, so it gets more time than a normal test.
     {
       name: 'setup',
       testMatch: /.*\.setup\.js/,
-      use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } },
+      timeout: 240_000,
+      use: { ...devices['Desktop Chrome'], viewport },
     },
-    // Signed-out journeys: sign up, onboarding, login, forgot password
+    // Signed-out journeys: sign up, onboarding, login, forgot password.
+    // Login and duplicate sign up use the admin created by setup.
     {
       name: 'auth',
       testDir: './tests/auth',
-      use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } },
+      dependencies: ['setup'],
+      use: { ...devices['Desktop Chrome'], viewport },
     },
     // Admin journeys start already signed in
     {
@@ -54,7 +61,7 @@ export default defineConfig({
       testDir: './tests',
       testIgnore: [/auth\//, /setup\//],
       dependencies: ['setup'],
-      use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 }, storageState: ADMIN_STATE },
+      use: { ...devices['Desktop Chrome'], viewport, storageState: ADMIN_STATE },
     },
   ],
 })

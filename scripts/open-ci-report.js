@@ -1,6 +1,6 @@
-// Download a CI run's full Playwright report (traces, videos, screenshots) and open it locally.
-// The public GitHub Pages report has these stripped, because they contain the admin's auth
-// token and production data. Needs the GitHub CLI (gh), signed in to an account with repo access.
+// Download a CI run's full Playwright report (traces, videos, screenshots) and open it locally,
+// e.g. for an older run than the one on GitHub Pages, or to use the trace viewer offline.
+// Needs the GitHub CLI (gh), signed in to an account with repo access.
 //
 // Usage: npm run report:ci [run-id]   (defaults to the latest E2E run)
 const { execFileSync } = require('child_process')
