@@ -65,6 +65,8 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 7
+          # A re-run replaces the earlier attempt's report instead of adding a second one
+          overwrite: true
 
   # Publishes the report to GitHub Pages, even when tests fail
   report:
@@ -96,9 +98,13 @@ jobs:
 
       - uses: actions/configure-pages@v5
 
+      # Named per attempt: deploy-pages fails if a re-run leaves two "github-pages" artifacts in one run
       - uses: actions/upload-pages-artifact@v4
         with:
           path: playwright-report
+          name: github-pages-attempt-${{ github.run_attempt }}
 
       - id: deploy
         uses: actions/deploy-pages@v4
+        with:
+          artifact_name: github-pages-attempt-${{ github.run_attempt }}
