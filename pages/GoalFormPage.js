@@ -61,10 +61,34 @@ export class GoalFormPage {
 
     const criteria = [mastery.percentCorrect, mastery.trialsPerSession, mastery.sessionsInARow, maintenance.percentCorrect, maintenance.trialsPerSession]
     for (const [i, value] of criteria.entries()) await this.criteriaInputs.nth(i + 1).fill(String(value))
+    // Autosave is debounced and sends the whole goal. Let the save that carries the last
+    // edit finish first, or it lands after Publish and turns the goal back into a draft.
+    const lastDraftSave = this.waitForGoalSave(body => body.isDraft === true &&
+      body.targets?.[0]?.masteryCriteria?.maintenanceFrequency === maintenance.period.toLowerCase())
     await this.maintenancePeriodDropdown.click()
     await this.page.getByRole('button', { name: maintenance.period, exact: true }).click()
+    await lastDraftSave
 
+    // Autosave shows the same toast, so wait for the publish request itself
+    const published = this.waitForGoalSave(body => body.isDraft === false)
     await this.publishButton.click()
+    await published
     await expect(this.savedToast).toBeVisible()
+  }
+
+  // Resolves with the first successful goal create/update whose JSON body matches
+  async waitForGoalSave(matches) {
+    const res = await this.page.waitForResponse(res =>
+      res.url().includes('/api/goals') && res.request().method() !== 'GET' && matches(requestBody(res.request())))
+    expect(res.ok()).toBe(true)
+    return res
+  }
+}
+
+function requestBody(request) {
+  try {
+    return request.postDataJSON() ?? {}
+  } catch {
+    return {}
   }
 }
