@@ -61,8 +61,7 @@ export const test = base.extend({
     newClient.fullName = `${newClient.firstName} ${newClient.lastName}`
 
     await clientsPage.visit()
-    await clientsPage.createClient(newClient)
-    newClient.id = await clientsPage.openProfile(newClient.fullName)
+    newClient.id = await clientsPage.createClient(newClient)
     await context.close()
 
     await use(newClient)
@@ -78,7 +77,7 @@ export const test = base.extend({
       await schedulePage.visit()
       await schedulePage.addSession()
       await sessionFormPage.fill({ ...details, date: daysFromToday(daysAhead) })
-      if (repeatDays) await sessionFormPage.repeatDailyUntil(daysFromToday(daysAhead + repeatDays))
+      if (repeatDays) await sessionFormPage.repeatDailyUntil(daysFromToday(daysAhead + repeatDays + 1))
       await sessionFormPage.create()
 
       const occurrences = []

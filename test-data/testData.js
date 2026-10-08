@@ -81,12 +81,16 @@ export const session = {
 
 export const cancellationReason = 'Client-initiated'
 
-// name is made unique in the test
+// name is made unique in the test. Trials goals need a named target with mastery and maintenance criteria.
 export const goal = {
   name: 'Playwright Goal',
   category: 'Safety',
   description: 'Client waits at the door until an adult says it is safe to cross.',
+  instructions: 'Stand at the door with the client and ask them to wait. Record Yes if they wait without a prompt.',
   method: 'Trials',
+  target: 'Waits at the door',
+  mastery: { percentCorrect: 80, trialsPerSession: 10, sessionsInARow: 2 },
+  maintenance: { percentCorrect: 80, trialsPerSession: 10, period: 'Weekly' },
 }
 
 // Goal data is only collected for service types like 1:1, High Intensity and Group Therapy

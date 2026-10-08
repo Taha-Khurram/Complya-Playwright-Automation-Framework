@@ -81,8 +81,9 @@ export class SessionFormPage {
     await this.page.keyboard.press('Escape')
   }
 
-  // Repeats every day from the session date up to and including `endDate`.
-  // A bounded custom rule, so tests never leave an endless series on production.
+  // Repeats every day from the session date until `endDate`. The series stops before the
+  // "Ends on" day, so pass the day after the last occurrence. A bounded custom rule, so
+  // tests never leave an endless series on production.
   async repeatDailyUntil(endDate) {
     await this.repeatsDropdown.click()
     await this.page.getByRole('button', { name: 'custom', exact: true }).click()

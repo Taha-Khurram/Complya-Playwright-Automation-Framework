@@ -6,7 +6,7 @@ export function daysFromToday(days) {
   return {
     input: `${pad(date.getMonth() + 1)}/${pad(date.getDate())}/${date.getFullYear()}`, // 12/15/2026, typed into date pickers
     short: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }), // Dec 15, 2026, in lists
-    long: date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }), // December 15, 2026, on details
+    long: date.toLocaleDateString('en-US', { month: 'long', day: '2-digit', year: 'numeric' }), // November 07, 2026, on details
   }
 }
 

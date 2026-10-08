@@ -49,7 +49,8 @@ export class ClientsPage {
     await this.calendarMonth.getByRole('option', { name: new RegExp(`^Choose \\w+, \\w+ ${day}(st|nd|rd|th), \\d{4}$`) }).click()
   }
 
-  // dateOfBirth is relative to today, e.g. { monthsAgo: 1, day: 15 }
+  // dateOfBirth is relative to today, e.g. { monthsAgo: 1, day: 15 }.
+  // Returns the new client's id, from their profile at /app/client-tabs/<id>
   async createClient({ firstName, lastName, dateOfBirth, site, gender }) {
     await this.openNewClientForm()
     await this.firstNameInput.fill(firstName)
@@ -62,7 +63,19 @@ export class ClientsPage {
     await this.page.getByRole('button', { name: gender, exact: true }).click()
     await this.addClientButton.click()
     await expect(this.successToast).toBeVisible()
-    await expect(this.dialog).toBeHidden()
+
+    // Sometimes the app opens the new client's profile by itself, sometimes it stays on the list
+    const profileUrl = /\/app\/client-tabs\/[^/?]+/
+    const openedByApp = await this.page.waitForURL(profileUrl, { timeout: 5_000, waitUntil: 'commit' }).then(() => true, () => false)
+    if (!openedByApp) {
+      await this.search(`${firstName} ${lastName}`)
+      const row = this.clientRow(`${firstName} ${lastName}`)
+      await expect(row).toHaveCount(1)
+      await row.getByRole('img', { name: 'image' }).click()
+      await this.page.waitForURL(profileUrl, { waitUntil: 'commit' })
+    }
+    await expect(this.page.getByRole('main').getByText(`${firstName} ${lastName}`).first()).toBeVisible()
+    return new URL(this.page.url()).pathname.split('/').pop()
   }
 
   async search(fullName) {
@@ -72,15 +85,5 @@ export class ClientsPage {
 
   clientRow(fullName) {
     return this.rows.filter({ hasText: fullName })
-  }
-
-  // Opens the client's profile and returns its id, from /app/client-tabs/<id>
-  async openProfile(fullName) {
-    await this.search(fullName)
-    const row = this.clientRow(fullName)
-    await expect(row).toHaveCount(1)
-    await row.getByRole('img', { name: 'image' }).click()
-    await this.page.waitForURL(/\/app\/client-tabs\/[^/?]+/)
-    return new URL(this.page.url()).pathname.split('/').pop()
   }
 }

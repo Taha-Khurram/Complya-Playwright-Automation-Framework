@@ -14,11 +14,11 @@ setup('Sign in as admin', async ({ page }) => {
 
   await new LoginPage(page).login(admin.email, admin.password)
 
-  // The admin is also the staff member sessions are scheduled for, so record their name.
-  // The profile button reads "Profile <full name> <email>".
-  const dashboardPage = new DashboardPage(page)
-  await dashboardPage.sidebar.expand()
-  const fullName = (await dashboardPage.profileButton.locator('strong').innerText()).trim()
+  // The admin is also the staff member sessions are scheduled for, so record their name
+  // from the dashboard greeting, e.g. "Good Afternoon, Muhammad Taha"
+  const greeting = await new DashboardPage(page).greeting.innerText()
+  const fullName = greeting.replace(/^Good \w+,/, '').trim()
+  expect(fullName, 'Admin name should be read from the dashboard greeting').toBeTruthy()
 
   mkdirSync(dirname(ADMIN_STATE), { recursive: true })
   writeFileSync(ADMIN_PROFILE, JSON.stringify({ email: admin.email, fullName }, null, 2))

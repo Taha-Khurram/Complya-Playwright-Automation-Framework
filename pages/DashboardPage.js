@@ -8,6 +8,8 @@ export class DashboardPage {
     this.page = page
     this.sidebar = new Sidebar(page)
     this.homeHeading = page.getByRole('main').getByRole('heading', { name: 'Home' })
+    // e.g. "Good Afternoon, Muhammad Taha"
+    this.greeting = page.getByRole('main').getByRole('heading', { level: 1, name: /^Good \w+, / })
     // Tour length depends on the permission, e.g. "1 of 12" for Admin
     this.tourProgress = page.getByText(/^1 of \d+$/)
     this.closeTourButton = page.getByRole('button', { name: 'Close Tour' })

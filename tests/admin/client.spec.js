@@ -11,11 +11,12 @@ test.describe('Create client', () => {
 
     await clientsPage.visit()
 
-    await test.step('Add the client', async () => {
+    await test.step("Add the client, which opens their profile", async () => {
       await clientsPage.createClient(newClient)
     })
 
     await test.step('Client is listed and active', async () => {
+      await clientsPage.visit()
       await clientsPage.search(fullName)
       await expect(clientsPage.clientRow(fullName)).toHaveCount(1)
       await expect(clientsPage.clientRow(fullName)).toContainText(newClient.site)

@@ -2,24 +2,32 @@ import { expect } from '@playwright/test'
 import { toast } from './components/Toast'
 
 // "Add Goal" at /app/create-goal, opened from a client's Programs tab.
-// The form saves a draft as fields are filled; Publish makes the goal active.
+// The form saves a draft as fields are filled; Publish validates every section and makes
+// the goal active. If a section is invalid, Publish switches to that section's tab instead.
 export class GoalFormPage {
 
   constructor(page) {
     this.page = page
     this.main = page.getByRole('main')
+    // Rich text editor of whichever section is open
+    this.editor = this.main.locator('.tiptap').first()
 
     // Details section
     this.nameInput = this.main.getByRole('textbox', { name: 'e.g. Receptive vocabulary' })
     this.categoryDropdown = this.main.getByRole('button', { name: 'Select Category' })
     this.descriptionButton = this.main.getByRole('button', { name: /Add Description/ })
-    this.descriptionEditor = this.main.locator('.tiptap').first()
     this.closePanelButton = this.main.getByRole('button', { name: 'Close' })
 
-    // Goals section
+    // RBT Instructions section
+    this.instructionsTab = this.main.getByRole('button', { name: 'RBT Instructions RBT Instructions' })
+
+    // Goals section. Trials starts with one target, named by clicking its placeholder name.
     this.goalsTab = this.main.getByRole('button', { name: 'Goals Goals' })
     this.methodDropdown = this.main.getByRole('button', { name: 'Data Collection Method' })
-    this.addTargetButton = this.main.getByRole('button', { name: '+ Add Target' })
+    this.targetName = this.main.locator('.goal-step-name-span').first()
+    // Baseline %, mastery %, trials per session, sessions in a row, maintenance %, maintenance trials
+    this.criteriaInputs = this.main.locator('.step-mastery-criteria').getByRole('spinbutton')
+    this.maintenancePeriodDropdown = this.main.getByRole('button', { name: 'Select Frequency' })
 
     this.publishButton = this.main.getByRole('button', { name: 'Publish' })
     // The first autosave creates the goal, so Publish may report either
@@ -29,21 +37,32 @@ export class GoalFormPage {
       .map(text => this.main.getByText(text, { exact: true }))
   }
 
-  // goal: { name, category, description, method }; Trials, Task Analysis etc. need a target, so one is added
-  async createGoal({ name, category, description, method }) {
+  // goal: see `goal` in test-data/testData.js
+  async createGoal({ name, category, description, instructions, method, target, mastery, maintenance }) {
     await this.nameInput.fill(name)
     await this.categoryDropdown.click()
     await this.page.getByRole('button', { name: category, exact: true }).click()
-
     await this.descriptionButton.click()
-    await this.descriptionEditor.click()
+    await this.editor.click()
     await this.page.keyboard.type(description)
     await this.closePanelButton.click()
+
+    await this.instructionsTab.click()
+    await this.editor.click()
+    await this.page.keyboard.type(instructions)
 
     await this.goalsTab.click()
     await this.methodDropdown.click()
     await this.page.getByRole('button', { name: method, exact: true }).click()
-    await this.addTargetButton.click()
+    await this.targetName.click()
+    await this.page.keyboard.type(target)
+    await this.page.keyboard.press('Enter')
+    await expect(this.targetName).toHaveText(target)
+
+    const criteria = [mastery.percentCorrect, mastery.trialsPerSession, mastery.sessionsInARow, maintenance.percentCorrect, maintenance.trialsPerSession]
+    for (const [i, value] of criteria.entries()) await this.criteriaInputs.nth(i + 1).fill(String(value))
+    await this.maintenancePeriodDropdown.click()
+    await this.page.getByRole('button', { name: maintenance.period, exact: true }).click()
 
     await this.publishButton.click()
     await expect(this.savedToast).toBeVisible()
