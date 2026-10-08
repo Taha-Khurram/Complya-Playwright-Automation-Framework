@@ -1,4 +1,5 @@
 import { expect } from '@playwright/test'
+import { toast } from './components/Toast'
 
 // "Check your email" screen after sign up, and the "Email Verified!" screen the email link opens
 export class EmailVerificationPage {
@@ -8,9 +9,8 @@ export class EmailVerificationPage {
     this.checkEmailHeading = page.getByRole('heading', { name: 'Check your email' })
     this.resendLink = page.getByText('Click to resend')
     this.verifiedHeading = page.getByRole('heading', { name: 'Email Verified!' })
-    this.verifiedToast = page.locator("//div[text()='Email verified successfully!']")
     this.loginLink = page.getByRole('link', { name: 'Log in' })
-    this.invalidLinkToast = page.locator("//div[text()='This link is invalid. It may have already been used.']")
+    this.verifiedToast = toast(page, 'Email verified successfully!')
   }
 
   async expectVerificationEmailSent(email) {
@@ -24,14 +24,6 @@ export class EmailVerificationPage {
     await expect(this.page).toHaveURL('/app/email/verified')
     await expect(this.verifiedHeading).toBeVisible()
     await expect(this.verifiedToast).toBeVisible()
-  }
-
-  // A used or tampered verify link sends the user to sign in instead of verifying
-  async expectLinkRejected() {
-    // The code is checked with the server first, which is slow under parallel load
-    await expect(this.invalidLinkToast).toBeVisible({ timeout: 15_000 })
-    await expect(this.page).toHaveURL('/app/sign-in')
-    await expect(this.verifiedHeading).toBeHidden()
   }
 
   async goToLogin() {

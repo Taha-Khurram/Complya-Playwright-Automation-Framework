@@ -1,57 +1,106 @@
 import { test as base, expect } from '@playwright/test'
+import { readFileSync } from 'fs'
 import { LoginPage } from '../pages/LoginPage'
-import { SitesPage } from '../pages/SitesPage'
-import { ClientsPage } from '../pages/ClientsPage'
-import { StaffManagementPage } from '../pages/StaffManagementPage'
 import { SignUpPage } from '../pages/SignUpPage'
+import { EmailPage } from '../pages/EmailPage'
 import { EmailVerificationPage } from '../pages/EmailVerificationPage'
 import { OnboardingPage } from '../pages/OnboardingPage'
 import { DashboardPage } from '../pages/DashboardPage'
 import { ForgotPasswordPage } from '../pages/ForgotPasswordPage'
 import { ResetPasswordPage } from '../pages/ResetPasswordPage'
-import { createInbox } from '../utils/mailbox'
+import { SitesPage } from '../pages/SitesPage'
+import { ClientsPage } from '../pages/ClientsPage'
+import { ClientProfilePage } from '../pages/ClientProfilePage'
+import { StaffManagementPage } from '../pages/StaffManagementPage'
+import { SchedulePage } from '../pages/SchedulePage'
+import { SessionFormPage } from '../pages/SessionFormPage'
+import { SessionDetailPage } from '../pages/SessionDetailPage'
+import { GoalFormPage } from '../pages/GoalFormPage'
+import { GoalAttemptPage } from '../pages/GoalAttemptPage'
+import { createInbox, waitForEmail } from '../utils/mailbox'
+import { ADMIN_PROFILE, ADMIN_STATE } from '../utils/auth'
+import { daysFromToday } from '../utils/dates'
+import { uniqueName } from '../utils/unique'
+import { client, goal as goalDefaults, newOwner, session as sessionDefaults } from '../test-data/testData'
 
-// Tests import `test` from here instead of '@playwright/test' to get page objects ready-made
+// Tests import `test` and `expect` from here instead of '@playwright/test'
 export const test = base.extend({
 
-  loginPage: async ({ page }, use) => {
-    await use(new LoginPage(page))
+  // ---- Page objects ----
+  loginPage: async ({ page }, use) => use(new LoginPage(page)),
+  signUpPage: async ({ page }, use) => use(new SignUpPage(page)),
+  emailVerificationPage: async ({ page }, use) => use(new EmailVerificationPage(page)),
+  onboardingPage: async ({ page }, use) => use(new OnboardingPage(page)),
+  dashboardPage: async ({ page }, use) => use(new DashboardPage(page)),
+  forgotPasswordPage: async ({ page }, use) => use(new ForgotPasswordPage(page)),
+  resetPasswordPage: async ({ page }, use) => use(new ResetPasswordPage(page)),
+  sitesPage: async ({ page }, use) => use(new SitesPage(page)),
+  clientsPage: async ({ page }, use) => use(new ClientsPage(page)),
+  clientProfilePage: async ({ page }, use) => use(new ClientProfilePage(page)),
+  staffManagementPage: async ({ page }, use) => use(new StaffManagementPage(page)),
+  schedulePage: async ({ page }, use) => use(new SchedulePage(page)),
+  sessionFormPage: async ({ page }, use) => use(new SessionFormPage(page)),
+  sessionDetailPage: async ({ page }, use) => use(new SessionDetailPage(page)),
+  goalFormPage: async ({ page }, use) => use(new GoalFormPage(page)),
+  goalAttemptPage: async ({ page }, use) => use(new GoalAttemptPage(page)),
+
+  // ---- Test data ----
+
+  // The signed-in admin, { email, fullName }, saved by tests/setup/admin.setup.js
+  adminUser: [async ({}, use) => {
+    await use(JSON.parse(readFileSync(ADMIN_PROFILE, 'utf8')))
+  }, { scope: 'worker' }],
+
+  // A client created once per worker, so session and goal tests can find their own data
+  // among everything else on production. { firstName, lastName, fullName, id }
+  testClient: [async ({ browser }, use, workerInfo) => {
+    const { baseURL, viewport } = workerInfo.project.use
+    const context = await browser.newContext({ baseURL, viewport, storageState: ADMIN_STATE })
+    const clientsPage = new ClientsPage(await context.newPage())
+    const newClient = { ...client, lastName: uniqueName() }
+    newClient.fullName = `${newClient.firstName} ${newClient.lastName}`
+
+    await clientsPage.visit()
+    await clientsPage.createClient(newClient)
+    newClient.id = await clientsPage.openProfile(newClient.fullName)
+    await context.close()
+
+    await use(newClient)
+  }, { scope: 'worker', timeout: 90_000 }],
+
+  // Schedules a session for testClient from the Schedule page and returns each occurrence
+  // with its id. daysAhead picks the date; repeatDays > 0 adds that many daily repeats.
+  // Each test uses its own daysAhead so its sessions never clash with another test's.
+  createSession: async ({ adminUser, testClient, schedulePage, sessionFormPage, clientProfilePage }, use) => {
+    await use(async ({ daysAhead, repeatDays = 0, ...overrides }) => {
+      const details = { ...sessionDefaults, staff: adminUser.fullName, client: testClient, ...overrides }
+
+      await schedulePage.visit()
+      await schedulePage.addSession()
+      await sessionFormPage.fill({ ...details, date: daysFromToday(daysAhead) })
+      if (repeatDays) await sessionFormPage.repeatDailyUntil(daysFromToday(daysAhead + repeatDays))
+      await sessionFormPage.create()
+
+      const occurrences = []
+      for (let day = 0; day <= repeatDays; day++) {
+        const occurrence = { ...details, date: daysFromToday(daysAhead + day) }
+        await clientProfilePage.openSessions(testClient.id)
+        occurrence.id = await clientProfilePage.openSession(occurrence)
+        occurrences.push(occurrence)
+      }
+      return occurrences
+    })
   },
 
-  sitesPage: async ({ page }, use) => {
-    await use(new SitesPage(page))
-  },
-
-  clientsPage: async ({ page }, use) => {
-    await use(new ClientsPage(page))
-  },
-
-  staffManagementPage: async ({ page }, use) => {
-    await use(new StaffManagementPage(page))
-  },
-
-  signUpPage: async ({ page }, use) => {
-    await use(new SignUpPage(page))
-  },
-
-  emailVerificationPage: async ({ page }, use) => {
-    await use(new EmailVerificationPage(page))
-  },
-
-  onboardingPage: async ({ page }, use) => {
-    await use(new OnboardingPage(page))
-  },
-
-  dashboardPage: async ({ page }, use) => {
-    await use(new DashboardPage(page))
-  },
-
-  forgotPasswordPage: async ({ page }, use) => {
-    await use(new ForgotPasswordPage(page))
-  },
-
-  resetPasswordPage: async ({ page }, use) => {
-    await use(new ResetPasswordPage(page))
+  // Publishes a uniquely named goal for testClient and returns it
+  createGoal: async ({ testClient, clientProfilePage, goalFormPage }, use) => {
+    await use(async (overrides = {}) => {
+      const newGoal = { ...goalDefaults, name: `${goalDefaults.name} ${uniqueName()}`, ...overrides }
+      await clientProfilePage.openPrograms(testClient.id)
+      await clientProfilePage.addNewGoal()
+      await goalFormPage.createGoal(newGoal)
+      return newGoal
+    })
   },
 
   // A fresh real inbox for tests that need to receive email
@@ -59,13 +108,27 @@ export const test = base.extend({
     await use(await createInbox(request))
   },
 
-  // Second "user" with no admin cookies. Manually created contexts don't inherit
-  // the config's video setting, so record it here too.
-  staffContext: async ({ browser, baseURL }, use, testInfo) => {
-    const context = await browser.newContext({
-      baseURL,
-      recordVideo: { dir: testInfo.outputPath('staff-video') },
-    })
+  // A brand new owner account that has signed up and verified its email, but not signed in yet
+  verifiedOwner: async ({ page, request, signUpPage, emailVerificationPage }, use) => {
+    const inbox = await createInbox(request, 'owner')
+    const owner = { ...newOwner, email: inbox.address }
+
+    await signUpPage.open()
+    await signUpPage.signUp(owner.email, owner.password)
+    await emailVerificationPage.expectVerificationEmailSent(owner.email)
+
+    const verificationEmail = await waitForEmail(request, inbox, /verify your email/i)
+    const emailPage = new EmailPage(page)
+    await emailPage.open(verificationEmail.html)
+    await emailPage.verifyEmail()
+    await emailVerificationPage.expectEmailVerified()
+
+    await use(owner)
+  },
+
+  // Second "user" with no admin session, e.g. an invited staff member
+  staffContext: async ({ browser, baseURL }, use) => {
+    const context = await browser.newContext({ baseURL })
     await use(context)
     await context.close()
   },

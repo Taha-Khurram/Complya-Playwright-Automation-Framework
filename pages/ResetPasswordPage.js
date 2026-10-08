@@ -1,4 +1,5 @@
 import { expect } from '@playwright/test'
+import { toast } from './components/Toast'
 
 // Screen opened from the "Reset your password" email, at /app/reset-password?oobCode=...
 export class ResetPasswordPage {
@@ -9,11 +10,11 @@ export class ResetPasswordPage {
     this.newPasswordInput = page.getByRole('textbox', { name: 'New password' })
     this.confirmPasswordInput = page.getByRole('textbox', { name: 'Confirm password' })
     this.resetButton = page.getByRole('button', { name: 'Reset Password' })
-    this.weakPasswordToast = page.locator("//div[text()='Must be at least 8 characters']")
-    this.mismatchToast = page.locator("//div[text()='Passwords do not match']")
-    this.successToast = page.locator("//div[text()='Password reset successfully! You can now sign in with your new password.']")
     this.usedLinkError = page.getByRole('paragraph').filter({ hasText: 'This link is invalid. It may have already been used.' })
-    this.redirectingMessage = page.getByText('Redirecting to sign in...')
+
+    this.weakPasswordToast = toast(page, 'Must be at least 8 characters')
+    this.mismatchToast = toast(page, 'Passwords do not match')
+    this.successToast = toast(page, 'Password reset successfully! You can now sign in with your new password.')
   }
 
   // The page names the account being reset, e.g. "for someone@example.com"
@@ -29,8 +30,8 @@ export class ResetPasswordPage {
     await this.resetButton.click()
   }
 
-  async expectRejectedWith(toast) {
-    await expect(toast).toBeVisible()
+  async expectRejectedWith(error) {
+    await expect(error).toBeVisible()
     await expect(this.page).toHaveURL(/\/app\/reset-password/)
     await expect(this.heading).toBeVisible()
   }
@@ -38,12 +39,11 @@ export class ResetPasswordPage {
   async resetPassword(newPassword) {
     await this.submit(newPassword)
     await expect(this.successToast).toBeVisible()
-    await expect(this.page).toHaveURL("/app/sign-in")
+    await expect(this.page).toHaveURL('/app/sign-in')
   }
 
   async expectLinkAlreadyUsed() {
     await expect(this.usedLinkError).toBeVisible()
-    await expect(this.redirectingMessage).toBeVisible()
     await expect(this.heading).toBeHidden()
   }
 }

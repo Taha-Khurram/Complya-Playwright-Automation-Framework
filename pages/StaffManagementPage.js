@@ -1,15 +1,15 @@
 import { expect } from '@playwright/test'
-import { Sidebar } from './components/Sidebar'
+import { toast } from './components/Toast'
 
-// Admin's Staff tab, where staff are invited
+// Admin's Staff list at /app/staffs, where staff are invited
 export class StaffManagementPage {
 
   constructor(page) {
     this.page = page
-    this.sidebar = new Sidebar(page)
-    this.addButton = page.getByRole('main').getByRole('button', { name: "Add" })
+    this.addButton = page.getByRole('main').getByRole('button', { name: 'Add', exact: true })
     // e.g. "1-10 / 25 Staff", shown once the list has loaded
-    this.listSummary = page.getByRole('main').getByRole('heading', { name: /\/ \d+ Staff$/ })
+    this.listSummary = page.getByRole('main').getByRole('heading', { name: /\/ \d+ Staff$/i })
+
     this.dialog = page.getByRole('dialog')
     this.firstNameInput = this.dialog.getByRole('textbox', { name: 'First Name' })
     this.lastNameInput = this.dialog.getByRole('textbox', { name: 'Last Name' })
@@ -19,22 +19,25 @@ export class StaffManagementPage {
     this.sitesDropdown = this.dialog.getByRole('button', { name: 'Select Sites' })
     this.sitesSearch = this.dialog.getByRole('textbox', { name: 'Search sites...' })
     this.submitButton = this.dialog.getByRole('button', { name: 'Add', exact: true })
-    this.inviteToast = page.locator("//div[text()='Staff invitation sent successfully!']")
+
+    this.invalidEmailError = this.dialog.getByText('Please enter a valid email address', { exact: true })
+    this.permissionRequiredError = this.dialog.getByText('Permission is required', { exact: true })
+    this.inviteToast = toast(page, 'Staff invitation sent successfully!')
   }
 
   async visit() {
-    await this.page.goto("/app/staffs")
+    await this.page.goto('/app/staffs')
+    await expect(this.listSummary).toBeVisible()
   }
 
-  async open() {
-    await this.sidebar.goToStaff()
-    await expect(this.page).toHaveURL("/app/staffs")
+  async openInviteForm() {
+    await this.addButton.click()
+    await expect(this.dialog).toBeVisible()
   }
 
   // permission: Admin | Staff | Manager | Clinical, role: Level 1 | Level 2 | Level 3
   async inviteStaff({ firstName, lastName, email, permission, role, sites }) {
-    await this.addButton.click()
-    await expect(this.dialog).toBeVisible()
+    await this.openInviteForm()
     await this.firstNameInput.fill(firstName)
     await this.lastNameInput.fill(lastName)
     await this.emailInput.fill(email)

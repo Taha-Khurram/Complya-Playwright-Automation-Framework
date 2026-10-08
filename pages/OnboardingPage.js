@@ -1,4 +1,5 @@
 import { expect } from '@playwright/test'
+import { toast } from './components/Toast'
 
 // 4-step wizard a brand new account owner goes through after their first sign in
 export class OnboardingPage {
@@ -12,12 +13,12 @@ export class OnboardingPage {
     this.firstNameInput = page.getByRole('textbox', { name: 'First name' })
     this.lastNameInput = page.getByRole('textbox', { name: 'Last name' })
     this.emailInput = page.getByRole('textbox', { name: 'Email' })
-    this.profileToast = page.locator("//div[text()='Profile created Successfully']")
+    this.profileToast = toast(page, 'Profile created Successfully')
 
     // Step 2 - Company
     this.companyHeading = page.getByRole('heading', { name: 'Create your workspace' })
     this.companyNameInput = page.getByRole('textbox', { name: 'Company name' })
-    this.companyToast = page.locator("//div[text()='WorkSpace Created Successfully!']")
+    this.companyToast = toast(page, 'WorkSpace Created Successfully!')
 
     // Step 3 - Workspace details
     this.workspaceHeading = page.getByRole('heading', { name: 'Workspace Setup' })
@@ -30,7 +31,8 @@ export class OnboardingPage {
     this.cityInput = page.getByRole('textbox', { name: 'City *' })
     this.zipInput = page.getByRole('textbox', { name: 'ZIP Code *' })
     this.stateInput = page.getByRole('textbox', { name: 'State *' })
-    this.workspaceToast = page.locator("//div[text()='Save Successfully!']")
+    this.invalidNpiError = page.getByText(/NPI( #)? must be exactly 10/)
+    this.workspaceToast = toast(page, 'Save Successfully!')
 
     // Step 4 - Team invites
     this.teamHeading = page.getByRole('heading', { name: 'Collaborate with your team' })
@@ -64,7 +66,7 @@ export class OnboardingPage {
   }
 
   // phone is digits only - the input already starts with "+1" and formats as you type
-  async setUpWorkspace({ companyName, phone, formattedPhone, npi, ein, formattedEin, address, city, zip, state }) {
+  async fillWorkspaceDetails({ companyName, phone, formattedPhone, npi, ein, formattedEin, address, city, zip, state }) {
     await this.expectStep(3, this.workspaceHeading)
     // Organization name is carried over from step 2
     await expect(this.organizationNameInput).toBeDisabled()
@@ -80,6 +82,10 @@ export class OnboardingPage {
     await this.zipInput.fill(zip)
     await this.stateInput.fill(state)
     await this.continueButton.click()
+  }
+
+  async setUpWorkspace(workspace) {
+    await this.fillWorkspaceDetails(workspace)
     await expect(this.workspaceToast).toBeVisible()
   }
 

@@ -1,85 +1,57 @@
 // @ts-check
-import { defineConfig, devices } from '@playwright/test';
-
-import { existsSync } from 'fs';
+import { defineConfig, devices } from '@playwright/test'
+import { existsSync } from 'fs'
+import { ADMIN_STATE } from './utils/auth'
 
 // Load ADMIN_EMAIL / ADMIN_PASSWORD etc. from .env when present (see .env.example)
-if (existsSync('.env')) process.loadEnvFile('.env');
+if (existsSync('.env')) process.loadEnvFile('.env')
 
 /**
  * @see https://playwright.dev/docs/test-configuration
  */
 export default defineConfig({
   testDir: './tests',
-  /* Run tests in files in parallel */
   fullyParallel: true,
-  /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
-  /* Retry on CI only */
-  retries: process.env.CI ? 2 : 0,
-  /* Opt out of parallel tests on CI. */
-  workers: process.env.CI ? 1 : undefined,
-  /* Reporter to use. See https://playwright.dev/docs/test-reporters */
-  reporter: 'html',
-  /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
-  use: {
-    /* Base URL to use in actions like `await page.goto('')`. */
-    baseURL: 'https://complya.com',
+  retries: process.env.CI ? 1 : 0,
+  // Every test writes to production, so keep the load on it modest
+  workers: process.env.CI ? 2 : 4,
+  timeout: 60_000,
+  expect: { timeout: 10_000 },
+  reporter: [['list'], ['html', { open: 'never' }]],
 
-    /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
-    trace: 'on-first-retry',
+  use: {
+    baseURL: process.env.BASE_URL || 'https://complya.com',
+    viewport: { width: 1440, height: 900 },
+    actionTimeout: 15_000,
+    navigationTimeout: 30_000,
+    trace: 'retain-on-failure',
+    screenshot: 'only-on-failure',
+    video: 'retain-on-failure',
+    // Slow each action down to watch a headed run, e.g. SLOWMO=800
+    launchOptions: { slowMo: Number(process.env.SLOWMO ?? 0) },
   },
 
-  /* Configure projects for major browsers */
   projects: [
+    // Signs the admin in once and saves the session for the admin projects
     {
-      name: 'chromium',
-      use: { ...devices['Desktop Chrome'],
-        trace:'on',
-        video:'on',
-        screenshot:'on',
-        viewport: {height:580, width:1240},
-        // Slow each action down to watch a headed run, e.g. SLOWMO=800
-        launchOptions: { slowMo: Number(process.env.SLOWMO ?? 0) }
-       },
+      name: 'setup',
+      testMatch: /.*\.setup\.js/,
+      use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } },
     },
-
-    // {
-    //   name: 'firefox',
-    //   use: { ...devices['Desktop Firefox'] },
-    // },
-
-    // {
-    //   name: 'webkit',
-    //   use: { ...devices['Desktop Safari'] },
-    // },
-
-    /* Test against mobile viewports. */
-    // {
-    //   name: 'Mobile Chrome',
-    //   use: { ...devices['Pixel 5'] },
-    // },
-    // {
-    //   name: 'Mobile Safari',
-    //   use: { ...devices['iPhone 12'] },
-    // },
-
-    /* Test against branded browsers. */
-    // {
-    //   name: 'Microsoft Edge',
-    //   use: { ...devices['Desktop Edge'], channel: 'msedge' },
-    // },
-    // {
-    //   name: 'Google Chrome',
-    //   use: { ...devices['Desktop Chrome'], channel: 'chrome' },
-    // },
+    // Signed-out journeys: sign up, onboarding, login, forgot password
+    {
+      name: 'auth',
+      testDir: './tests/auth',
+      use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 } },
+    },
+    // Admin journeys start already signed in
+    {
+      name: 'admin',
+      testDir: './tests',
+      testIgnore: [/auth\//, /setup\//],
+      dependencies: ['setup'],
+      use: { ...devices['Desktop Chrome'], viewport: { width: 1440, height: 900 }, storageState: ADMIN_STATE },
+    },
   ],
-
-  /* Run your local dev server before starting the tests */
-  // webServer: {
-  //   command: 'npm run start',
-  //   url: 'http://localhost:3000',
-  //   reuseExistingServer: !process.env.CI,
-  // },
-});
-
+})

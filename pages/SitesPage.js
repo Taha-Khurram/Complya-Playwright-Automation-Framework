@@ -1,40 +1,40 @@
 import { expect } from '@playwright/test'
-import { Sidebar } from './components/Sidebar'
+import { toast } from './components/Toast'
 
+// Settings > Sites at /app/sites
 export class SitesPage {
 
   constructor(page) {
     this.page = page
-    this.sidebar = new Sidebar(page)
-    this.sitesCard = page.locator("//div[contains(@class, 'card-body') and .//h5[text()='Sites']]")
-    this.addButton = page.getByRole('button', { name: "Add" })
-    // e.g. "1-10 / 10 Sites", shown once the list has loaded
-    this.listSummary = page.getByRole('main').getByRole('heading', { name: /\/ \d+ Sites$/ })
-    this.autofillButton = page.getByRole('button', { name: "Autofill from Workspace" })
+    this.addButton = page.getByRole('main').getByRole('button', { name: 'Add', exact: true })
+    this.autofillButton = page.getByRole('button', { name: 'Autofill from Workspace' })
     this.siteNameInput = page.getByRole('textbox', { name: 'Site Name *' })
+    this.npiInput = page.locator('input[name="npi"]')
     this.cityInput = page.getByRole('textbox', { name: 'City *' })
     this.zipInput = page.getByRole('textbox', { name: 'ZIP Code *' })
     this.stateInput = page.getByRole('textbox', { name: 'State *' })
     this.saveButton = page.getByRole('button', { name: 'Save' })
-    this.successToast = page.locator("//div[text()='Site Created Successfully!']")
+    this.successToast = toast(page, 'Site Created Successfully!')
+
+    this.requiredErrors = ['Site Name is required', 'City is required', 'ZIP is required', 'State is required']
+      .map(text => page.getByText(text, { exact: true }))
   }
 
   async visit() {
-    await this.page.goto("/app/sites")
+    await this.page.goto('/app/sites')
+    await expect(this.addButton).toBeVisible()
   }
 
-  async open() {
-    await this.sidebar.goToSettings()
-    await expect(this.page).toHaveURL("/app/settings")
-    await this.sitesCard.click()
-    await expect(this.page).toHaveURL("/app/sites")
+  async openNewSiteForm() {
+    await this.addButton.click()
+    await expect(this.saveButton).toBeVisible()
   }
 
   async createSite({ name, city, zip, state }) {
-    await this.addButton.click()
+    await this.openNewSiteForm()
+    // Autofill copies NPI, EIN, phone and address from the workspace; wait for it so it can't overwrite our values
     await this.autofillButton.click()
-    // Wait for autofill to finish so it doesn't overwrite our values
-    await this.page.waitForTimeout(5000)
+    await expect(this.npiInput).not.toHaveValue('')
     await this.siteNameInput.fill(name)
     await this.cityInput.fill(city)
     await this.zipInput.fill(zip)

@@ -1,33 +1,44 @@
 import { expect } from '@playwright/test'
-import { Sidebar } from './components/Sidebar'
+import { toast } from './components/Toast'
 
+// Client list at /app/clients and its "Add" dialog
 export class ClientsPage {
 
   constructor(page) {
     this.page = page
-    this.sidebar = new Sidebar(page)
-    this.addButton = page.getByRole('button', { name: "Add" })
-    // e.g. "1-10 / 13 Clients", shown once the list has loaded
-    this.listSummary = page.getByRole('main').getByRole('heading', { name: /\/ \d+ Clients$/ })
-    this.firstNameInput = page.locator("#firstName")
-    this.lastNameInput = page.locator("#lastName")
-    this.dateOfBirthInput = page.locator("//input[@placeholder='Select date of birth']")
+    this.main = page.getByRole('main')
+    this.addButton = this.main.getByRole('button', { name: 'Add', exact: true })
+    // e.g. "1-10 / 18 clients", shown once the list has loaded (case varies between views)
+    this.listSummary = this.main.getByRole('heading', { name: /^\d+-\d+ \/ \d+ clients$/i })
+    this.searchInput = this.main.getByRole('textbox', { name: 'Search...' })
+    // The search box is collapsed until the icon button just before it is clicked
+    this.searchToggle = this.searchInput.locator('xpath=preceding::button[1]')
+    this.rows = this.main.getByRole('row')
+
+    this.dialog = page.getByRole('dialog')
+    this.firstNameInput = this.dialog.getByRole('textbox', { name: 'First Name', exact: true })
+    this.lastNameInput = this.dialog.getByRole('textbox', { name: 'Last Name', exact: true })
+    this.dateOfBirthInput = this.dialog.getByPlaceholder('Select date of birth')
     this.previousMonthButton = page.getByRole('button', { name: 'Previous Month' })
     // Days of the month on screen, e.g. listbox "Month October, 2026"
     this.calendarMonth = page.getByRole('listbox', { name: /^Month / })
-    this.siteDropdown = page.getByRole('button', { name: 'Select', exact: true })
-    this.genderDropdown = page.getByRole('button', { name: 'Select Gender' })
-    this.addClientButton = page.getByRole('button', { name: 'Add Client' })
-    this.successToast = page.locator("//div[text()='Client has been added successfully!']")
+    this.siteDropdown = this.dialog.getByRole('button', { name: 'Select', exact: true })
+    this.genderDropdown = this.dialog.getByRole('button', { name: 'Select gender' })
+    this.addClientButton = this.dialog.getByRole('button', { name: 'Add Client' })
+    this.successToast = toast(page, 'Client has been added successfully!')
+
+    this.requiredErrors = ['First name is required', 'Last name is required', 'Date of Birth is Required', 'Site is Required', 'Gender is Required']
+      .map(text => this.dialog.getByText(text, { exact: true }))
   }
 
   async visit() {
-    await this.page.goto("/app/clients")
+    await this.page.goto('/app/clients')
+    await expect(this.listSummary).toBeVisible()
   }
 
-  async open() {
-    await this.sidebar.goToClients()
-    await expect(this.page).toHaveURL("/app/clients")
+  async openNewClientForm() {
+    await this.addButton.click()
+    await expect(this.firstNameInput).toBeEditable()
   }
 
   // The picker opens on the current month and disables future days, so pick relative to today:
@@ -40,16 +51,36 @@ export class ClientsPage {
 
   // dateOfBirth is relative to today, e.g. { monthsAgo: 1, day: 15 }
   async createClient({ firstName, lastName, dateOfBirth, site, gender }) {
-    await this.addButton.click()
-    await this.page.waitForTimeout(5000)
+    await this.openNewClientForm()
     await this.firstNameInput.fill(firstName)
     await this.lastNameInput.fill(lastName)
     await this.pickDateOfBirth(dateOfBirth)
     await this.siteDropdown.click()
+    // Options read "<site> <site>" (icon label + text); several sites can share a name
     await this.page.getByRole('button', { name: `${site} ${site}` }).first().click()
     await this.genderDropdown.click()
     await this.page.getByRole('button', { name: gender, exact: true }).click()
     await this.addClientButton.click()
     await expect(this.successToast).toBeVisible()
+    await expect(this.dialog).toBeHidden()
+  }
+
+  async search(fullName) {
+    await this.searchToggle.click()
+    await this.searchInput.fill(fullName)
+  }
+
+  clientRow(fullName) {
+    return this.rows.filter({ hasText: fullName })
+  }
+
+  // Opens the client's profile and returns its id, from /app/client-tabs/<id>
+  async openProfile(fullName) {
+    await this.search(fullName)
+    const row = this.clientRow(fullName)
+    await expect(row).toHaveCount(1)
+    await row.getByRole('img', { name: 'image' }).click()
+    await this.page.waitForURL(/\/app\/client-tabs\/[^/?]+/)
+    return new URL(this.page.url()).pathname.split('/').pop()
   }
 }

@@ -1,26 +1,25 @@
 import { expect } from '@playwright/test'
+import { toast } from './components/Toast'
 
 export class LoginPage {
 
   constructor(page) {
     this.page = page
-    this.loginLink = page.getByText("Login")
     this.heading = page.getByRole('heading', { name: 'Login' })
-    this.emailInput = page.getByPlaceholder("Enter your email address")
-    this.passwordInput = page.getByPlaceholder("Enter Password")
+    this.emailInput = page.getByPlaceholder('Enter your email address')
+    this.passwordInput = page.getByPlaceholder('Enter Password')
     this.signInButton = page.getByRole('button', { name: 'Sign In', exact: true })
-    this.successToast = page.locator("//div[text()='Sign-in successful!']")
-    this.invalidCredentialsToast = page.locator("//div[text()='Invalid email or password. Please try again.']")
     this.forgetPasswordLink = page.getByRole('link', { name: 'Forget password' })
-    this.verifyEmailFirstToast = page.locator("//div[text()='Please verify your email before signing in. Check your inbox for the verification link.']")
     this.resendVerificationLink = page.getByText('Resend verification email')
+
+    this.successToast = toast(page, 'Sign-in successful!')
+    this.invalidCredentialsToast = toast(page, 'Invalid email or password. Please try again.')
+    this.verifyEmailFirstToast = toast(page, 'Please verify your email before signing in.')
   }
 
   async open() {
-    await this.page.goto("/home/")
-    await this.loginLink.click()
-    // The link opens /app/, which checks for a session before redirecting - slow when tests run in parallel
-    await expect(this.page).toHaveURL("/app/sign-in", { timeout: 15_000 })
+    await this.page.goto('/app/sign-in')
+    await expect(this.heading).toBeVisible()
   }
 
   async signIn(email, password) {
@@ -29,13 +28,13 @@ export class LoginPage {
     await this.signInButton.click()
   }
 
-  // Full login from the home page, used by every admin test
+  // Full sign in for an account that has finished onboarding
   async login(email, password) {
     await this.open()
     await this.signIn(email, password)
-    // Same slow session check as open(), worst when several admin tests sign in at once
-    await expect(this.page).toHaveURL("/app/", { timeout: 15_000 })
-    await this.expectSignInSuccess()
+    // /app/ checks the session before rendering, which is slow when several tests sign in at once
+    await expect(this.page).toHaveURL('/app/', { timeout: 20_000 })
+    await expect(this.successToast).toBeVisible()
   }
 
   async expectSignInSuccess() {
@@ -44,20 +43,21 @@ export class LoginPage {
 
   async expectInvalidCredentials() {
     await expect(this.invalidCredentialsToast).toBeVisible()
-    await expect(this.page).toHaveURL("/app/sign-in")
+    await expect(this.page).toHaveURL('/app/sign-in')
+    await expect(this.successToast).toBeHidden()
   }
 
-  // Account exists but its email link was never clicked
+  // Account exists but its verification link was never clicked
   async expectEmailNotVerified() {
     // Sign in waits on the server's verified check, which can take a while under parallel load
     await expect(this.verifyEmailFirstToast).toBeVisible({ timeout: 15_000 })
-    await expect(this.page).toHaveURL("/app/sign-in")
+    await expect(this.page).toHaveURL('/app/sign-in')
     await expect(this.resendVerificationLink).toBeVisible()
   }
 
   async goToForgotPassword() {
     await this.forgetPasswordLink.click()
-    await expect(this.page).toHaveURL("/app/forget-password")
+    await expect(this.page).toHaveURL('/app/forget-password')
   }
 
   // Invited staff lands here with the email already filled in
