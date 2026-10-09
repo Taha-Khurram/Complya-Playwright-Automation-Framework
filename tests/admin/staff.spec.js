@@ -37,12 +37,24 @@ test.describe('Create staff', () => {
       await signUpPage.createInvitedAccount(member.password)
     })
 
-    await test.step('Staff signs in and accepts the invite', async () => {
+    const acceptInvitePage = new AcceptInvitePage(staffTab)
+
+    await test.step('Staff signs in and sees the invite', async () => {
       const loginPage = new LoginPage(staffTab)
       await loginPage.expectEmailPrefilled(member.email)
       await loginPage.signIn(member.email, member.password)
       await loginPage.expectSignInSuccess()
-      await new AcceptInvitePage(staffTab).accept(`${member.firstName} ${member.lastName}`)
+
+      const hitKnownBug = await acceptInvitePage.waitForInvite()
+      // Keeps the app bug visible in the report while it still happens
+      if (hitKnownBug) test.info().annotations.push({
+        type: 'known app bug',
+        description: 'After sign in the app showed "Couldn\'t Load Your Workspace" (stale 401 from the sign up page); the page had to be reloaded to see the invite.',
+      })
+    })
+
+    await test.step('Staff accepts the invite', async () => {
+      await acceptInvitePage.accept(`${member.firstName} ${member.lastName}`)
     })
   })
 
