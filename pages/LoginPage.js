@@ -10,6 +10,9 @@ export class LoginPage {
     this.passwordInput = page.getByPlaceholder('Enter Password')
     this.signInButton = page.getByRole('button', { name: 'Sign In', exact: true })
     this.forgetPasswordLink = page.getByRole('link', { name: 'Forget password' })
+    this.signUpLink = page.getByRole('link', { name: 'Sign Up' })
+    // On the public website, complya.com/home/
+    this.websiteLoginLink = page.getByRole('link', { name: 'Login' })
     this.resendVerificationLink = page.getByText('Resend verification email')
 
     this.successToast = toast(page, 'Sign-in successful!')
@@ -17,8 +20,12 @@ export class LoginPage {
     this.verifyEmailFirstToast = toast(page, 'Please verify your email before signing in.')
   }
 
+  // The app's sign in page (app.complya.com/app/sign-in).
+  // This is the only URL the signed-out tests open.
   async open() {
     await this.page.goto('/app/sign-in')
+    // /app/ checks for a session before showing sign in, which is slow when tests run in parallel
+    await expect(this.page).toHaveURL('/app/sign-in', { timeout: 20_000 })
     await expect(this.heading).toBeVisible()
   }
 
@@ -53,6 +60,11 @@ export class LoginPage {
     await expect(this.verifyEmailFirstToast).toBeVisible({ timeout: 15_000 })
     await expect(this.page).toHaveURL('/app/sign-in')
     await expect(this.resendVerificationLink).toBeVisible()
+  }
+
+  async goToSignUp() {
+    await this.signUpLink.click()
+    await expect(this.page).toHaveURL('/app/signup')
   }
 
   async goToForgotPassword() {

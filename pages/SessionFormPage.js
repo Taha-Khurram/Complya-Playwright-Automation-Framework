@@ -4,8 +4,9 @@ import { toast } from './components/Toast'
 const SCOPE_LABELS = { this: 'This session', future: 'This and all future sessions' }
 
 // Create session form (/app/create-session) and edit session form (/app/edit-session/<id>).
-// After Create, Update, Cancel or Delete the app goes back one page in history, so these
-// forms must always be opened from another app page, never as the first page in a tab.
+// Create opens from Schedule > Add or a client's Sessions tab > +; edit opens by clicking the
+// session's card on the Schedule (SchedulePage.openSession). After Create, Update, Cancel or
+// Delete the app goes back to the page the form was opened from.
 export class SessionFormPage {
 
   constructor(page) {
@@ -53,6 +54,21 @@ export class SessionFormPage {
     await this.modalityDropdown.click()
     await this.page.getByRole('button', { name: modality, exact: true }).click()
     await this.setTimes(start, end)
+  }
+
+  // For the form opened from a client's profile, where the client, today's date and the times
+  // (now until an hour from now) are already filled in. Returns those times, e.g.
+  // { start: '15:49', end: '16:49' }, to find the session afterwards.
+  async createFromClientProfile({ staff, serviceType, modality }) {
+    const start = await this.startTimeInput.inputValue()
+    const end = await this.endTimeInput.inputValue()
+    await this.selectStaff(staff)
+    await this.serviceTypeDropdown.click()
+    await this.page.getByRole('button', { name: serviceType, exact: true }).click()
+    await this.modalityDropdown.click()
+    await this.page.getByRole('button', { name: modality, exact: true }).click()
+    await this.create()
+    return { start, end }
   }
 
   async setDate(date) {
@@ -104,13 +120,6 @@ export class SessionFormPage {
   async expectNotCreated(error) {
     await expect(error).toBeVisible()
     await expect(this.page).toHaveURL('/app/create-session')
-  }
-
-  // Opened from the Sessions list so that "go back" after saving lands there
-  async openEdit(sessionId) {
-    await this.page.goto('/app/sessions')
-    await this.page.goto(`/app/edit-session/${sessionId}`)
-    await this.expectEditLoaded()
   }
 
   async expectEditLoaded() {

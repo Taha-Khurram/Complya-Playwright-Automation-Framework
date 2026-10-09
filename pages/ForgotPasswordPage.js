@@ -1,4 +1,5 @@
 import { expect } from '@playwright/test'
+import { LoginPage } from './LoginPage'
 
 // "Forget Password" screen at /app/forget-password, where a reset link is requested
 export class ForgotPasswordPage {
@@ -13,8 +14,11 @@ export class ForgotPasswordPage {
     this.resendLink = page.getByText('Click to resend')
   }
 
+  // Website -> Login -> "Forget password" link
   async open() {
-    await this.page.goto("/app/forget-password")
+    const loginPage = new LoginPage(this.page)
+    await loginPage.open()
+    await loginPage.goToForgotPassword()
     await expect(this.heading).toBeVisible()
   }
 

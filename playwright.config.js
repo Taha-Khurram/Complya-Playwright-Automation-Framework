@@ -1,13 +1,13 @@
 // @ts-check
 import { defineConfig, devices } from '@playwright/test'
 import { existsSync } from 'fs'
-import { ADMIN_STATE } from './utils/auth'
+import { ADMIN_STATE, EXISTING_ADMIN_STATE } from './utils/auth'
 
 // Load BASE_URL etc. from .env when present (see .env.example)
 if (existsSync('.env')) process.loadEnvFile('.env')
 
 // Browser window size for every project
-const viewport = { width: 1080, height: 1020 }
+const viewport = { width: 1060, height: 1280 }
 
 /**
  * @see https://playwright.dev/docs/test-configuration
@@ -27,7 +27,7 @@ export default defineConfig({
     : [['list'], ['html', { open: 'never' }]],
 
   use: {
-    baseURL: process.env.BASE_URL || 'https://complya.com',
+    baseURL: process.env.BASE_URL || 'https://app.complya.com',
     viewport,
     actionTimeout: 15_000,
     navigationTimeout: 30_000,
@@ -43,7 +43,7 @@ export default defineConfig({
     // Waits for a real email, so it gets more time than a normal test.
     {
       name: 'setup',
-      testMatch: /.*\.setup\.js/,
+      testMatch: /[\\/]admin\.setup\.js$/,
       timeout: 240_000,
       use: { ...devices['Desktop Chrome'], viewport },
     },
@@ -59,9 +59,22 @@ export default defineConfig({
     {
       name: 'admin',
       testDir: './tests',
-      testIgnore: [/auth\//, /setup\//],
+      testIgnore: [/auth\//, /setup\//, /existing-account\//],
       dependencies: ['setup'],
       use: { ...devices['Desktop Chrome'], viewport, storageState: ADMIN_STATE },
+    },
+    // Signs in with the existing account in ADMIN_EMAIL / ADMIN_PASSWORD (no sign up)
+    {
+      name: 'existing-admin-setup',
+      testMatch: /existing-admin\.setup\.js$/,
+      use: { ...devices['Desktop Chrome'], viewport },
+    },
+    // Journeys that must run on the existing account, e.g. a full session with a signed note
+    {
+      name: 'existing-admin',
+      testDir: './tests/existing-account',
+      dependencies: ['existing-admin-setup'],
+      use: { ...devices['Desktop Chrome'], viewport, storageState: EXISTING_ADMIN_STATE },
     },
   ],
 })

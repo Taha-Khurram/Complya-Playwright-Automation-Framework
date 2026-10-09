@@ -1,15 +1,21 @@
 import { expect } from '@playwright/test'
 import { toast } from './components/Toast'
+import { Sidebar } from './components/Sidebar'
 
-// Client list at /app/clients and its "Add" dialog
+// Client list at /app/clients (sidebar > Clients) and its "Add" dialog
 export class ClientsPage {
 
   constructor(page) {
     this.page = page
+    this.sidebar = new Sidebar(page)
     this.main = page.getByRole('main')
     this.addButton = this.main.getByRole('button', { name: 'Add', exact: true })
     // e.g. "1-10 / 18 clients", shown once the list has loaded (case varies between views)
     this.listSummary = this.main.getByRole('heading', { name: /^\d+-\d+ \/ \d+ clients$/i })
+    this.searchInput = this.main.getByRole('textbox', { name: 'Search...' })
+    // The search box is collapsed until the icon button just before it is clicked
+    this.searchToggle = this.searchInput.locator('xpath=preceding::button[1]')
+    this.rows = this.main.getByRole('row')
 
     this.dialog = page.getByRole('dialog')
     this.firstNameInput = this.dialog.getByRole('textbox', { name: 'First Name', exact: true })
@@ -27,8 +33,9 @@ export class ClientsPage {
       .map(text => this.dialog.getByText(text, { exact: true }))
   }
 
-  async visit() {
-    await this.page.goto('/app/clients')
+  async open() {
+    await this.sidebar.goToClients()
+    await expect(this.page).toHaveURL('/app/clients')
     await expect(this.listSummary).toBeVisible()
   }
 
@@ -45,9 +52,8 @@ export class ClientsPage {
     await this.calendarMonth.getByRole('option', { name: new RegExp(`^Choose \\w+, \\w+ ${day}(st|nd|rd|th), \\d{4}$`) }).click()
   }
 
-  // dateOfBirth is relative to today, e.g. { monthsAgo: 1, day: 15 }. Returns the new client's id.
-  // The id comes from the create response: the client list can't be used to find a client,
-  // because its search matches loosely and long names are cut short.
+  // client: { firstName, lastName, dateOfBirth, site, gender }; dateOfBirth is relative to
+  // today, e.g. { monthsAgo: 1, day: 15 }. Afterwards the app may open the new client's profile.
   async createClient({ firstName, lastName, dateOfBirth, site, gender }) {
     await this.openNewClientForm()
     await this.firstNameInput.fill(firstName)
@@ -58,29 +64,29 @@ export class ClientsPage {
     await this.page.getByRole('button', { name: `${site} ${site}` }).first().click()
     await this.genderDropdown.click()
     await this.page.getByRole('button', { name: gender, exact: true }).click()
-
-    const created = this.page.waitForResponse(res =>
-      res.request().method() === 'POST' && /\/api\/clients\/?$/.test(new URL(res.url()).pathname))
     await this.addClientButton.click()
-    const response = await created
-    expect(response.ok(), `Creating the client returned ${response.status()}`).toBe(true)
     await expect(this.successToast).toBeVisible()
-
-    const id = findId(await response.json())
-    expect(id, 'The create client response should include the new client\'s id').toBeTruthy()
-    return id
+    await expect(this.dialog).toBeHidden()
   }
-}
 
-// First "id" in the response, nearest the top, e.g. { id } or { data: { id } }
-function findId(body) {
-  const queue = [body]
-  while (queue.length) {
-    const value = queue.shift()
-    if (value && typeof value === 'object') {
-      if (typeof value.id === 'string' || typeof value.id === 'number') return String(value.id)
-      queue.push(...Object.values(value))
-    }
+  async search(text) {
+    await this.searchToggle.click()
+    await this.searchInput.fill(text)
   }
-  return undefined
+
+  // Search matches loosely and shows names with extra spaces, so find the row by the
+  // client's last name, which tests make unique
+  clientRow({ lastName }) {
+    return this.rows.filter({ hasText: lastName })
+  }
+
+  // Clients list -> search -> click the client, which opens their profile
+  async openClient(client) {
+    await this.open()
+    await this.search(client.lastName)
+    const row = this.clientRow(client)
+    await expect(row).toHaveCount(1)
+    await row.getByRole('img', { name: 'image' }).click()
+    await expect(this.page).toHaveURL(/\/app\/client-tabs\//)
+  }
 }

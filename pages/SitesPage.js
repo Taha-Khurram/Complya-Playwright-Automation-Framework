@@ -1,11 +1,14 @@
 import { expect } from '@playwright/test'
 import { toast } from './components/Toast'
+import { Sidebar } from './components/Sidebar'
 
-// Settings > Sites at /app/sites
+// Settings > Sites at /app/sites, reached from the Sites card on Settings
 export class SitesPage {
 
   constructor(page) {
     this.page = page
+    this.sidebar = new Sidebar(page)
+    this.sitesCard = page.getByRole('main').locator('.card-body').filter({ has: page.getByRole('heading', { name: 'Sites', exact: true }) })
     this.addButton = page.getByRole('main').getByRole('button', { name: 'Add', exact: true })
     this.autofillButton = page.getByRole('button', { name: 'Autofill from Workspace' })
     this.siteNameInput = page.getByRole('textbox', { name: 'Site Name *' })
@@ -20,8 +23,10 @@ export class SitesPage {
       .map(text => page.getByText(text, { exact: true }))
   }
 
-  async visit() {
-    await this.page.goto('/app/sites')
+  async open() {
+    await this.sidebar.goToSettings()
+    await this.sitesCard.click()
+    await expect(this.page).toHaveURL('/app/sites')
     await expect(this.addButton).toBeVisible()
   }
 

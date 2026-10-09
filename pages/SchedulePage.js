@@ -1,5 +1,6 @@
 import { expect } from '@playwright/test'
 import { timeRange } from '../utils/dates'
+import { Sidebar } from './components/Sidebar'
 
 // Schedule (calendar) at /app/calender, where sessions are added. Opens in Week view on the
 // Client tab: one row per client, with a cell per day (Sun-Sat) holding that day's sessions.
@@ -7,7 +8,9 @@ export class SchedulePage {
 
   constructor(page) {
     this.page = page
+    this.sidebar = new Sidebar(page)
     this.main = page.getByRole('main')
+    this.todayButton = this.main.getByRole('button', { name: 'Today', exact: true })
     this.heading = this.main.getByRole('heading', { name: 'Schedule' })
     this.addButton = this.main.getByRole('button', { name: 'Add', exact: true })
     this.weekLabel = this.main.locator('.calendar-date-nav-label')
@@ -17,10 +20,10 @@ export class SchedulePage {
     this.gridRows = this.main.locator('.resource-timeline-grid-row')
   }
 
-  async visit() {
-    await this.page.goto('/app/calender')
-    // A full page load shows the app's "Complya . . ." boot screen first, which can be slow
-    await expect(this.heading).toBeVisible({ timeout: 30_000 })
+  async open() {
+    await this.sidebar.goToSchedule()
+    await expect(this.page).toHaveURL('/app/calender')
+    await expect(this.heading).toBeVisible()
   }
 
   async addSession() {
@@ -30,6 +33,7 @@ export class SchedulePage {
 
   // Steps forward from the current week to the week holding `date` (from daysFromToday())
   async goToWeekOf(date) {
+    await this.todayButton.click()
     const weekStart = d => { const s = new Date(d); s.setHours(0, 0, 0, 0); s.setDate(s.getDate() - s.getDay()); return s }
     const weeks = Math.round((weekStart(parseInput(date)) - weekStart(new Date())) / (7 * 24 * 60 * 60 * 1000))
     for (let i = 0; i < weeks; i++) {
@@ -39,9 +43,10 @@ export class SchedulePage {
     }
   }
 
-  // Clicks the session's card in the client's row, which opens its edit form.
-  // Cards are titled "<service> - 9:00 AM - 10:00 AM".
+  // Schedule > the session's week > clicks its card in the client's row, which opens its edit
+  // form. Cards are titled "<service> - 9:00 AM - 10:00 AM".
   async openSession({ client, date, start, end }) {
+    await this.open()
     await this.goToWeekOf(date)
     // Search matches on the server and may return other clients too; the last name is unique
     await this.searchInput.fill(client.lastName)

@@ -90,3 +90,26 @@ export const goal = {
 
 // Goal data is only collected for service types like 1:1, High Intensity and Group Therapy
 export const goalSessionType = '1:1 97153'
+
+// Text for a client's Preferences tab. `keywords` are concrete details an AI summary of the
+// text should keep, matched case-insensitively; `edited` replaces `text` with new details.
+export const preferences = {
+  text: 'The client loves dinosaurs and calms down quickly under a weighted blanket. ' +
+    'Loud vacuum cleaners upset the client, so give a five minute warning before one is used.',
+  keywords: [/dinosaur/i, /blanket/i, /vacuum/i],
+  edited: {
+    text: 'The client is calmest when playing with toy trains. ' +
+      'Avoid bright flashing lights, and offer orange juice after each activity.',
+    keywords: [/train/i, /light/i, /orange/i],
+  },
+  // For "Regenerate with prompt": the new summary should only cover what upsets the client
+  prompt: 'Only describe what upsets the client, in one sentence. Do not mention toys, dinosaurs or blankets.',
+  promptKeywords: [/vacuum/i],
+  promptExcludes: [/dinosaur/i, /blanket/i],
+}
+
+// The existing account (ADMIN_EMAIL / ADMIN_PASSWORD) used by tests/existing-account.
+// New clients there are added to this site, which must already exist in that workspace.
+export const existingAccount = {
+  site: 'Test Site',
+}

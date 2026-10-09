@@ -6,7 +6,7 @@ test.describe('Create site', () => {
 
   test('Positive: admin creates a site with details autofilled from the workspace', async ({ sitesPage }) => {
 
-    await sitesPage.visit()
+    await sitesPage.open()
 
     await sitesPage.createSite({ ...site, name: `Playwright Site ${uniqueName()}` })
   })
@@ -14,7 +14,7 @@ test.describe('Create site', () => {
 
   test('Negative: a site cannot be saved without its required details', async ({ sitesPage }) => {
 
-    await sitesPage.visit()
+    await sitesPage.open()
     await sitesPage.openNewSiteForm()
 
     await sitesPage.saveButton.click()

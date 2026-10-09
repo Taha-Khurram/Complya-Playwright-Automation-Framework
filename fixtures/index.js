@@ -17,11 +17,13 @@ import { SessionFormPage } from '../pages/SessionFormPage'
 import { SessionDetailPage } from '../pages/SessionDetailPage'
 import { GoalFormPage } from '../pages/GoalFormPage'
 import { GoalAttemptPage } from '../pages/GoalAttemptPage'
+import { SessionNotePage } from '../pages/SessionNotePage'
+import { PreferencesSummaryPage } from '../pages/PreferencesSummaryPage'
 import { createInbox, waitForEmail } from '../utils/mailbox'
-import { ADMIN_PROFILE, ADMIN_STATE } from '../utils/auth'
+import { ADMIN_PROFILE, ADMIN_STATE, EXISTING_ADMIN_PROFILE } from '../utils/auth'
 import { daysFromToday } from '../utils/dates'
 import { uniqueName } from '../utils/unique'
-import { client, goal as goalDefaults, newOwner, session as sessionDefaults } from '../test-data/testData'
+import { client, goal as goalDefaults, goalSessionType, newOwner, session as sessionDefaults } from '../test-data/testData'
 
 // Tests import `test` and `expect` from here instead of '@playwright/test'
 export const test = base.extend({
@@ -43,6 +45,8 @@ export const test = base.extend({
   sessionDetailPage: async ({ page }, use) => use(new SessionDetailPage(page)),
   goalFormPage: async ({ page }, use) => use(new GoalFormPage(page)),
   goalAttemptPage: async ({ page }, use) => use(new GoalAttemptPage(page)),
+  sessionNotePage: async ({ page }, use) => use(new SessionNotePage(page)),
+  preferencesSummaryPage: async ({ page }, use) => use(new PreferencesSummaryPage(page)),
 
   // ---- Test data ----
 
@@ -51,54 +55,71 @@ export const test = base.extend({
     await use(JSON.parse(readFileSync(ADMIN_PROFILE, 'utf8')))
   }, { scope: 'worker' }],
 
-  // A client created once per worker, so session and goal tests can find their own data
-  // among everything else on production. { firstName, lastName, fullName, id }
+  // The existing account from ADMIN_EMAIL / ADMIN_PASSWORD, { email, fullName }, saved by
+  // tests/setup/existing-admin.setup.js. Used by tests/existing-account.
+  existingAdmin: [async ({}, use) => {
+    await use(JSON.parse(readFileSync(EXISTING_ADMIN_PROFILE, 'utf8')))
+  }, { scope: 'worker' }],
+
+  // A client created once per worker, so session and goal tests can find their own data among
+  // everything else on production. { firstName, lastName, fullName, site, ... }
   testClient: [async ({ browser, adminUser }, use, workerInfo) => {
     const { baseURL, viewport } = workerInfo.project.use
     const context = await browser.newContext({ baseURL, viewport, storageState: ADMIN_STATE })
     const page = await context.newPage()
-    const clientsPage = new ClientsPage(page)
     const newClient = { ...client, lastName: uniqueName(), site: adminUser.site }
     newClient.fullName = `${newClient.firstName} ${newClient.lastName}`
 
-    await clientsPage.visit()
-    newClient.id = await clientsPage.createClient(newClient)
-    // Proves the id belongs to this client before every session and goal test relies on it
-    await new ClientProfilePage(page).expectClient(newClient.id, newClient)
+    const clientsPage = new ClientsPage(page)
+    await clientsPage.open()
+    await clientsPage.createClient(newClient)
+    // Proves the client can be found and opened before every session and goal test relies on it
+    await new ClientProfilePage(page).expectClient(newClient)
     await context.close()
 
     await use(newClient)
   }, { scope: 'worker', timeout: 90_000 }],
 
-  // Schedules a session for testClient from the Schedule page and returns each occurrence
-  // with its id. daysAhead picks the date; repeatDays > 0 adds that many daily repeats.
+  // Schedules a session for testClient from Schedule > Add and returns each occurrence.
+  // daysAhead picks the date; repeatDays > 0 adds that many daily repeats.
   // Each test uses its own daysAhead so its sessions never clash with another test's.
-  createSession: async ({ adminUser, testClient, schedulePage, sessionFormPage, clientProfilePage }, use) => {
+  createSession: async ({ adminUser, testClient, schedulePage, sessionFormPage }, use) => {
     await use(async ({ daysAhead, repeatDays = 0, ...overrides }) => {
       const details = { ...sessionDefaults, staff: adminUser.fullName, client: testClient, ...overrides }
 
-      await schedulePage.visit()
+      await schedulePage.open()
       await schedulePage.addSession()
       await sessionFormPage.fill({ ...details, date: daysFromToday(daysAhead) })
       if (repeatDays) await sessionFormPage.repeatDailyUntil(daysFromToday(daysAhead + repeatDays + 1))
       await sessionFormPage.create()
 
-      const occurrences = []
-      for (let day = 0; day <= repeatDays; day++) {
-        const occurrence = { ...details, date: daysFromToday(daysAhead + day) }
-        await clientProfilePage.openSessions(testClient.id)
-        occurrence.id = await clientProfilePage.openSession(occurrence)
-        occurrences.push(occurrence)
-      }
-      return occurrences
+      return Array.from({ length: repeatDays + 1 }, (_, day) => ({ ...details, date: daysFromToday(daysAhead + day) }))
     })
   },
 
-  // Publishes a uniquely named goal for testClient and returns it
+  // Creates a 1:1 session for today from testClient's Sessions tab (+), opens it from the list
+  // and clicks Start Session. Ends on the session's Goals step. Returns the session.
+  startTodaysSession: async ({ adminUser, testClient, clientProfilePage, sessionFormPage, sessionDetailPage }, use) => {
+    await use(async () => {
+      await clientProfilePage.openSessions(testClient)
+      await clientProfilePage.openCreateSession()
+      // The form starts on today, from now until an hour from now
+      const times = await sessionFormPage.createFromClientProfile({
+        staff: adminUser.fullName, serviceType: goalSessionType, modality: sessionDefaults.modality,
+      })
+      const session = { client: testClient, date: daysFromToday(0), ...times }
+
+      await clientProfilePage.openSessionDetails(testClient, session)
+      await sessionDetailPage.startSession()
+      return session
+    })
+  },
+
+  // Publishes a uniquely named goal for testClient (Programs tab > Add Goal) and returns it
   createGoal: async ({ testClient, clientProfilePage, goalFormPage }, use) => {
     await use(async (overrides = {}) => {
       const newGoal = { ...goalDefaults, name: `${goalDefaults.name} ${uniqueName()}`, ...overrides }
-      await clientProfilePage.openPrograms(testClient.id)
+      await clientProfilePage.openPrograms(testClient)
       await clientProfilePage.addNewGoal()
       await goalFormPage.createGoal(newGoal)
       return newGoal

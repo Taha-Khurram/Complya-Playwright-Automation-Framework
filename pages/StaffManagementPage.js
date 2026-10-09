@@ -1,11 +1,13 @@
 import { expect } from '@playwright/test'
 import { toast } from './components/Toast'
+import { Sidebar } from './components/Sidebar'
 
-// Admin's Staff list at /app/staffs, where staff are invited
+// Staff list at /app/staffs (sidebar > Staff), where staff are invited
 export class StaffManagementPage {
 
   constructor(page) {
     this.page = page
+    this.sidebar = new Sidebar(page)
     this.addButton = page.getByRole('main').getByRole('button', { name: 'Add', exact: true })
     // e.g. "1-10 / 25 Staff", shown once the list has loaded
     this.listSummary = page.getByRole('main').getByRole('heading', { name: /\/ \d+ Staff$/i })
@@ -25,8 +27,9 @@ export class StaffManagementPage {
     this.inviteToast = toast(page, 'Staff invitation sent successfully!')
   }
 
-  async visit() {
-    await this.page.goto('/app/staffs')
+  async open() {
+    await this.sidebar.goToStaff()
+    await expect(this.page).toHaveURL('/app/staffs')
     await expect(this.listSummary).toBeVisible()
   }
 

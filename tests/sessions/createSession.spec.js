@@ -9,15 +9,15 @@ test.describe('Create session', () => {
   test('Positive: admin schedules a single session that shows as upcoming for the client', async ({
     createSession, adminUser, testClient, clientProfilePage, sessionDetailPage,
   }) => {
-    const [session] = await test.step('Schedule the session from the Schedule page', () => createSession({ daysAhead: 30 }))
+    const [session] = await test.step('Schedule the session from Schedule > Add', () => createSession({ daysAhead: 30 }))
 
-    await test.step("Session is listed on the client's profile as upcoming", async () => {
-      await clientProfilePage.openSessions(testClient.id)
+    await test.step("Session is listed on the client's Sessions tab as upcoming", async () => {
+      await clientProfilePage.openSessions(testClient)
       await clientProfilePage.expectSessionStatus(session, 'Upcoming')
     })
 
-    await test.step('Session details match what was entered', async () => {
-      await sessionDetailPage.visit(session.id)
+    await test.step('Opening it shows the details that were entered', async () => {
+      await clientProfilePage.openSession(session)
       await sessionDetailPage.expectDetails({
         date: session.date.long,
         time: timeRange(session.start, session.end).detail,
@@ -33,7 +33,7 @@ test.describe('Create session', () => {
   test('Negative: a session without staff or with a past date is not created', async ({
     adminUser, testClient, schedulePage, sessionFormPage,
   }) => {
-    await schedulePage.visit()
+    await schedulePage.open()
     await schedulePage.addSession()
 
     await test.step('No staff selected', async () => {

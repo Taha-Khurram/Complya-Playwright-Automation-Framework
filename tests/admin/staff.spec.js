@@ -17,7 +17,7 @@ test.describe('Create staff', () => {
     const member = { ...staff, email: inbox.address, sites: [adminUser.site] }
 
     await test.step('Admin sends the invite', async () => {
-      await staffManagementPage.visit()
+      await staffManagementPage.open()
       await staffManagementPage.inviteStaff(member)
     })
 
@@ -61,7 +61,7 @@ test.describe('Create staff', () => {
 
   test('Negative: an invite with an invalid email and no permission is not sent', async ({ staffManagementPage }) => {
 
-    await staffManagementPage.visit()
+    await staffManagementPage.open()
     await staffManagementPage.openInviteForm()
 
     await staffManagementPage.firstNameInput.fill(staff.firstName)

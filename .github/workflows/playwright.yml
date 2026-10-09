@@ -8,7 +8,7 @@ on:
         description: Which tests to run
         type: choice
         default: all
-        options: [all, auth, admin, sessions, goals]
+        options: [all, auth, admin, sessions, goals, existing]
   # Weekdays at 07:00 Pakistan time (02:00 UTC)
   schedule:
     - cron: '0 2 * * 1-5'
@@ -26,10 +26,12 @@ jobs:
     name: Playwright (${{ inputs.suite || 'all' }})
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    # Variables come from Settings > Environments > production. No account secrets are
-    # needed: each run signs up its own admin.
+    # Secrets and variables come from Settings > Environments > production. Most tests sign up
+    # their own admin; tests/existing-account signs in with ADMIN_EMAIL / ADMIN_PASSWORD.
     environment: production
     env:
+      ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
+      ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
       BASE_URL: ${{ vars.BASE_URL }}
       SUITE: ${{ inputs.suite || 'all' }}
 
@@ -53,6 +55,7 @@ jobs:
             auth)           npx playwright test --project=auth ;;
             admin)          npx playwright test --project=admin ;;
             sessions|goals) npx playwright test "tests/$SUITE" ;;
+            existing)       npx playwright test --project=existing-admin ;;
             *)              npx playwright test ;;
           esac
 

@@ -8,6 +8,7 @@
     "test:admin": "playwright test --project=admin",
     "test:sessions": "playwright test tests/sessions",
     "test:goals": "playwright test tests/goals",
+    "test:existing": "playwright test --project=existing-admin",
     "test:headed": "playwright test --headed --workers=1",
     "test:ui": "playwright test --ui",
     "report": "playwright show-report",

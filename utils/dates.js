@@ -10,15 +10,17 @@ export function daysFromToday(days) {
   }
 }
 
+// "09:00" -> "09:00 AM" (lists) or "9:00 AM" (details)
+export function formatTime(hhmm, { padHour = true } = {}) {
+  const [h, m] = hhmm.split(':').map(Number)
+  const hour = h % 12 || 12
+  return `${padHour ? String(hour).padStart(2, '0') : hour}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`
+}
+
 // "09:00", "10:30" -> lists show "09:00 AM - 10:30 AM", details show "9:00 AM - 10:30 AM"
 export function timeRange(start, end) {
-  const format = (hhmm, padHour) => {
-    const [h, m] = hhmm.split(':').map(Number)
-    const hour = h % 12 || 12
-    return `${padHour ? String(hour).padStart(2, '0') : hour}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`
-  }
   return {
-    list: `${format(start, true)} - ${format(end, true)}`,
-    detail: `${format(start, false)} - ${format(end, false)}`,
+    list: `${formatTime(start)} - ${formatTime(end)}`,
+    detail: `${formatTime(start, { padHour: false })} - ${formatTime(end, { padHour: false })}`,
   }
 }

@@ -1,5 +1,6 @@
 import { expect } from '@playwright/test'
 import { toast } from './components/Toast'
+import { LoginPage } from './LoginPage'
 
 export class SignUpPage {
 
@@ -27,8 +28,11 @@ export class SignUpPage {
     this.duplicateEmailToast = toast(page, 'An account with this email already exists')
   }
 
+  // Website -> Login -> "Sign Up" link
   async open() {
-    await this.page.goto('/app/signup')
+    const loginPage = new LoginPage(this.page)
+    await loginPage.open()
+    await loginPage.goToSignUp()
     await expect(this.heading).toBeVisible()
   }
 

@@ -1,8 +1,9 @@
 import { expect } from '@playwright/test'
 
-// Goal data collection for a session, at /app/goal-attempt?sessionId=...&clientId=...
-// The app opens it from a session's "Add Note" for service types that track goals (1:1,
-// High Intensity, Group Therapy). Each of the client's In Progress goals is a card.
+// The Goals step of a session's note, at /app/goal-attempt?sessionId=...&clientId=...
+// Reached by starting a session (SessionDetailPage.startSession) or, for a session in
+// progress, its "Add Note" button. Only for service types that track goals (1:1, High
+// Intensity, Group Therapy). Each of the client's In Progress goals is a card.
 export class GoalAttemptPage {
 
   constructor(page) {
@@ -12,13 +13,6 @@ export class GoalAttemptPage {
     // e.g. "% Correct: 50% (1/2)"
     this.percentCorrect = this.dialog.getByText(/^% Correct:/)
     this.saveDraftButton = page.getByRole('button', { name: 'Save as Draft' })
-  }
-
-  // Opened from the client's profile so that "go back" after saving lands there
-  async open({ sessionId, clientId }) {
-    await this.page.goto(`/app/client-tabs/${clientId}?tab=sessions`)
-    await this.page.goto(`/app/goal-attempt?sessionId=${sessionId}&clientId=${clientId}`)
-    await expect(this.heading).toBeVisible()
   }
 
   goalCard(name) {

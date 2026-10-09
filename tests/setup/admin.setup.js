@@ -30,7 +30,7 @@ setup('Create a new admin account and workspace', async ({
 
   // A new workspace has no sites, and clients and staff must belong to one
   await setup.step('Create a site', async () => {
-    await sitesPage.visit()
+    await sitesPage.open()
     await sitesPage.createSite({ ...site, name: siteName })
   })
 
